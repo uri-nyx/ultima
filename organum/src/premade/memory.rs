@@ -3,6 +3,7 @@ use crate::core::*;
 use crate::error::Error;
 use std::fs;
 
+#[derive(Debug, Clone)]
 pub struct MemoryBlock {
     read_only: bool,
     contents: Vec<u8>,
@@ -19,7 +20,7 @@ impl MemoryBlock {
     pub fn load(filename: &str) -> Result<MemoryBlock, Error> {
         match fs::read(filename) {
             Ok(contents) => Ok(MemoryBlock::new(contents)),
-            Err(_) => Err(Error::new(&format!("Error reading contents of {}", filename))),
+            Err(e) => Err(Error::new(&format!("Error reading contents of {}: {}", filename, e))),
         }
     }
 

@@ -1,70 +1,26 @@
 use std::io::Write;
 
-use organum::core::{Steppable, Transmutable, ClockElapsed, Addressable, Address};
+use organum::core::{Steppable, Transmutable, ClockElapsed};
 use organum::error::Error;
-use organum::premade::bus::BusPort;
 use organum::server::Server;
 use organum::sys::System;
-
-#[derive(Clone)]
-pub struct Serial {
-    pub rx: Address,
-    pub rx_remaining: Address,
-    pub tx: Address,
-    pub tx_remaining: Address,
-
-    pub transmitting: bool,
-    pub port: BusPort
-}
-
-impl Serial {
-    pub fn new(base: Address, port: BusPort) -> Self {
-        Self { 
-            rx: base, 
-            rx_remaining: base + 1, 
-            tx: base + 2, 
-            tx_remaining: base + 3,
-
-            transmitting: false,
-            port: port
-        }
-    }
-
-    #[inline(always)]
-    pub fn transmit(&mut self, byte: u8, remaining: u8) -> Result<(), Error> {
-        self.port.write_u8(self.tx, byte)?;
-        self.port.write_u8(self.tx_remaining, remaining)?;
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    pub fn receive(&mut self) -> Result<(u8, u8), Error> {
-        let mut received = [0u8; 2];
-
-        self.port.read(self.rx, &mut received)?;
-
-        Ok((received[0], received[1]))
-    }
-}
+use organum::premade::serial::{Serial, Flag};
 
 
 pub struct Tty {
     pub server: Server,
-    pub rx_buf: Vec<u8>,
-    pub tx_buf: Vec<u8>,
     pub trigger: char,
     pub serial: Serial,
+    pub received: bool,
 }
 
 impl Tty {
     pub fn new(ip: std::net::IpAddr, port: u16, serial: &Serial) -> Self {
         Self {
             server: Server::new(ip, port).unwrap(),
-            rx_buf: Vec::<u8>::new(),
-            tx_buf: Vec::<u8>::new(),
             trigger: '\n',
             serial: serial.clone(),
+            received: false,
         }
     }
 
@@ -79,7 +35,7 @@ impl Tty {
                     return Ok(());
                 }
 
-                self.tx_buf.push(ch);
+                self.serial.tx_buffer.push(ch);
                 Ok(())
             }
 
@@ -96,32 +52,25 @@ impl Tty {
 
     pub fn transmit(&mut self, system: &System) -> Result<(), Error> {
         self.get_chars()?;
-        println!("tx_buf: {:?}, transmitting: {}", self.tx_buf, self.serial.transmitting);
-
-        if self.tx_buf.len() == 0 {
-            self.serial.transmitting = false;
-        }
 
         if self.serial.transmitting {
-            self.serial.transmit(self.tx_buf.pop().unwrap_or('\0' as u8), self.tx_buf.len() as u8)?;
-            system.get_interrupt_controller().set(true, 6, 12)?;
+            self.serial.transmit()?;
+            system.get_interrupt_controller().set(true, 4, 12)?;
         }
 
         Ok(())
     }
 
     fn receive(&mut self) -> Result<(), Error>{
-        let (ch, remaining) = self.serial.receive()?;
-        self.rx_buf.push(ch);
-        println!("rx_buf: {:?}, remaining: {}", self.rx_buf, remaining);
+        
+        self.serial.receive()?;
 
-        // send interrupt to acknowledge receipt
-
-        if remaining == 0 {
-            match self.server.to_client.write(&self.rx_buf) {
-                Ok(_) => self.rx_buf.clear(),
+        if self.serial.done()? {
+            match self.server.to_client.write(&self.serial.rx_buffer) {
+                Ok(_) => self.serial.rx_buffer.clear(),
                 Err(e) => panic!("Error sending data to client: {}", e)
             }
+            self.serial.clear_status(Flag::DONE as u8)?;
         }
 
         Ok(())
@@ -139,6 +88,6 @@ impl Steppable for Tty {
         self.transmit(system)?;
         self.receive()?;
 
-        Ok(1_000_000_000 / 1_000_000)
+        Ok(1_000_000_000 / self.serial.frequency)
     }
 }

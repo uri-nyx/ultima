@@ -1,0 +1,8 @@
+/target
+/.vscode
+.DS_Store
+dev/drive/*
+organum/target
+src/sirius.md
+Cargo.lock
+src/sirius.md

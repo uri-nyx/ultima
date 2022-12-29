@@ -1,6 +1,6 @@
 // A very simple TCP server that should allow to implement comunications 
 // between the emulator and other devices such as tty's or debuggers
-use crate::error::Error;
+
 use std::net::{TcpListener, TcpStream, IpAddr, SocketAddr};
 use std::sync::mpsc::{Sender, Receiver};
 use std::{thread, sync::mpsc, io::prelude::*};
@@ -65,29 +65,4 @@ impl Server {
             
         });
     }
-
-    pub fn default_receiver<F>(&mut self, f: F) -> Result<(), Error>
-    where F: Fn(String)
-    {
-        let mut buff = Vec::<u8>::new();
-
-        match self.receiver.recv() {
-            Ok(msg) => {                
-                let ch = msg[0];
-                if ch as char == '\n' {
-                    let command = String::from_utf8_lossy(buff.as_slice()).to_string();
-                    f(command);
-                    buff.clear();
-                    Ok(())
-                } else {
-                    buff.push(ch);
-                    Ok(())
-                }
-            }
-            Err(e) => {
-                Err(Error::new(&format!("Receiver Error: {}", e)))
-            }
-        }
-    }
-
 }

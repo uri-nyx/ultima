@@ -1,13 +1,12 @@
 // state.rs provides a model for the Sirius cpu
-
-use organum::core::{Address, Interruptable, Transmutable};
+use organum::core::{Address, Interruptable};
 use organum::premade::bus::BusPort;
-use organum::timers::CpuTimer;
 
-use crate::components::{Uptr, Word, TaleaCpuType};
-use modular_bitfield_msb::specifiers::*;
-use super::decode::Decoder;
 use super::debugger::Debugger;
+use super::decode::Decoder;
+use crate::components::{TaleaCpuType, Uptr, Word};
+use crate::components::cpu::mmu::Mmu;
+use modular_bitfield_msb::specifiers::*;
 
 const RGCOUNT: usize = 32;
 
@@ -15,25 +14,23 @@ const RGCOUNT: usize = 32;
 pub enum Status {
     Init,
     Running,
-    Stopped
+    Stopped,
 }
 
 #[repr(u8)]
 #[allow(dead_code)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Exceptions {
-    BusError            = 2,
-    AddressError        = 3,
-    IllegalInstruction  = 4,
-    ZeroDivide          = 5,
-    ChkInstruction      = 6,
-    TrapvInstruction    = 7,
-    PrivilegeViolation  = 8,
-    Trace               = 9,
-    LineAEmulator       = 10,
-    LineFEmulator       = 11,
+    Reset = 0,
+    BusError = 2,
+    AddressError = 3,
+    IllegalInstruction = 4,
+    ZeroDivide = 5,
+    PrivilegeViolation = 6,
+    PageFault = 7,
+    AccessViolation = 8,
+    //ChkInstruction = 6, this could be interesting, hardware bounds checking
 }
-
 
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -82,7 +79,87 @@ pub enum Register {
     T3 = 28,
     T4 = 29,
     T5 = 30,
-    T6 = 31
+    T6 = 31,
+}
+
+impl From<usize> for Register {
+    fn from(value: usize) -> Self {
+        let value = value & 0x1f;
+        match value {
+            0 => Register::Zero,
+            1 => Register::Ra,
+            2 => Register::Sp,
+            3 => Register::Gp,
+            4 => Register::Tp,
+            5 => Register::T0,
+            6 => Register::T1,
+            7 => Register::T2,
+            8 => Register::Fp,
+            9 => Register::A0,
+            10 => Register::A1,
+            11 => Register::A2,
+            12 => Register::A3,
+            13 => Register::A4,
+            14 => Register::A5,
+            15 => Register::A6,
+            16 => Register::A7,
+            17 => Register::S2,
+            18 => Register::S3,
+            19 => Register::S4,
+            20 => Register::S5,
+            21 => Register::S6,
+            22 => Register::S7,
+            23 => Register::S8,
+            24 => Register::S9,
+            25 => Register::S10,
+            26 => Register::S11,
+            27 => Register::T3,
+            28 => Register::T4,
+            29 => Register::T5,
+            30 => Register::T6,
+            31 => Register::T6,
+            _ => panic!("Invalid register value: {}", value),
+        }
+    }
+}
+
+impl From<Register> for usize {
+    fn from(value: Register) -> Self {
+        match value {
+            Register::Zero => 0,
+            Register::Ra => 1,
+            Register::Sp => 2,
+            Register::Gp => 3,
+            Register::Tp => 4,
+            Register::T0 => 5,
+            Register::T1 => 6,
+            Register::T2 => 7,
+            Register::S1 => 9,
+            Register::Fp => 8,
+            Register::A0 => 10,
+            Register::A1 => 11,
+            Register::A2 => 12,
+            Register::A3 => 13,
+            Register::A4 => 14,
+            Register::A5 => 15,
+            Register::A6 => 16,
+            Register::A7 => 17,
+            Register::S2 => 18,
+            Register::S3 => 19,
+            Register::S4 => 20,
+            Register::S5 => 21,
+            Register::S6 => 22,
+            Register::S7 => 23,
+            Register::S8 => 24,
+            Register::S9 => 25,
+            Register::S10 => 26,
+            Register::S11 => 27,
+            Register::T3 => 28,
+            Register::T4 => 29,
+            Register::T5 => 30,
+            Register::T6 => 31,
+        }
+    }
 }
 
 #[modular_bitfield_msb::bitfield]
@@ -90,10 +167,12 @@ pub enum Register {
 pub struct StatusReg {
     pub supervisor: bool,
     pub interrupt_enabled: bool,
+    pub mmu_enabled: bool,
     pub priority: B3,
-    reserved: B27,
+    pub ivt: B6,
+    pub pdt: u8,
+    #[skip] __: B12
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct State {
@@ -106,17 +185,18 @@ pub struct State {
     pub reg: [Word; RGCOUNT],
     pub ssp: Word,
     pub usp: Word,
+    pub virtual_pc : Word,
 }
 
 pub struct Sirius {
     pub cputype: TaleaCpuType,
     pub frequency: u32,
     pub state: State,
+    pub mmu: Mmu,
     pub decoder: Decoder,
     pub debugger: Debugger,
     pub port: BusPort,
     pub port_d: BusPort,
-    pub timer: CpuTimer
 }
 
 impl State {
@@ -126,34 +206,20 @@ impl State {
             current_ipl: InterruptPriority::NoInterrupt,
             pending_ipl: InterruptPriority::NoInterrupt,
 
-            pc: Uptr::new(0),
+            pc: 0,
             psr: StatusReg::new()
                 .with_supervisor(true)
                 .with_interrupt_enabled(false)
                 .with_priority(7)
-                .with_reserved(0),
+                .with_ivt(7),
             reg: [0; RGCOUNT],
             ssp: 0,
-            usp: 0
-        }
-    }
+            usp: 0,
+            virtual_pc: 0
 
-    pub fn get_register(&mut self, reg: Register) -> Word {
-        self.reg[reg as usize]
-    }
-
-    pub fn set_register(&mut self, reg: Register, value: Word) {
-        if reg == Register::Sp {
-            if self.psr.supervisor() {
-                self.ssp = value;
-            } else {
-                self.usp = value;
-            }
         }
     }
 }
-
-
 
 impl Sirius {
     pub fn new(cputype: TaleaCpuType, frequency: u32, port: BusPort, port_d: BusPort) -> Self {
@@ -162,10 +228,10 @@ impl Sirius {
             frequency,
             state: State::new(),
             decoder: Decoder::new(),
+            mmu: Mmu::new(),
             debugger: Debugger::new(),
             port: port,
             port_d: port_d,
-            timer: CpuTimer::new()
         }
     }
 
@@ -174,35 +240,50 @@ impl Sirius {
         self.state = State::new();
         self.decoder = Decoder::new();
         self.debugger = Debugger::new();
+        self.mmu = Mmu::new();
     }
 
     pub fn dump_state(&mut self) {
+        println!("PC: {:#08x}   PSR: {:?}", self.state.pc, self.state.psr);
+        println!("SSP: {:#08x}  USP: {:#08x}", self.state.ssp, self.state.usp);
         println!("Status: {:?}", self.state.status);
-        println!("PC: {:#08x}", self.state.pc);
-        println!("SSP: {:#08x}", self.state.ssp);
-        println!("USP: {:#08x}", self.state.usp);
-        println!("PSR: {:?}", self.state.psr);
 
-        let mut i = 0;
-        for reg in self.state.reg {
-            println!("r{}: {:08x}", i, reg);
-            i += 1;
+        let mut iter = self.state.reg.iter();
+
+        for r in (0..self.state.reg.len()).filter(|e| e % 4 == 0) {
+            print!(
+                "r{:02}: {:08x}   r{:02}: {:08x}\t",
+                r,
+                iter.next().unwrap(),
+                r + 1,
+                iter.next().unwrap()
+            );
+            print!(
+                "r{:02}: {:08x}   r{:02}: {:08x}\n",
+                r + 2,
+                iter.next().unwrap(),
+                r + 3,
+                iter.next().unwrap()
+            );
         }
 
-        println!("Current Instruction: {} {:?}", self.decoder.format_instruction_bytes(&mut self.port), self.decoder.instruction);
-        println!("");
-        self.port.dump_memory(self.state.reg[Register::Sp as usize] as Address, 0x40);
+        println!(
+            "Current Instruction: {} {:?}",
+            self.decoder.format_instruction_bytes(&mut self.port),
+            self.decoder.instruction
+        );
+        println!("Stack:");
+        self.port
+            .dump_memory(self.state.reg[Register::Sp as usize] as Address, 0x40);
         println!("");
     }
 
     pub fn dump_state_str(&mut self) -> String {
-       return format!("Pc: {:08x}", self.state.pc)
+        return format!("Pc: {:08x}", self.state.pc);
     }
 }
 
-impl Interruptable for Sirius {
-    
-}
+impl Interruptable for Sirius {}
 
 impl InterruptPriority {
     pub fn from_u8(priority: u8) -> InterruptPriority {

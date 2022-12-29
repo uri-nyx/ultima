@@ -94,7 +94,6 @@ impl System {
     pub fn enable_debugging(&self) {
         self.debug_enabled.set(true);
         self.devices.get("cpu").map(|result| result.try_borrow_mut().map(|mut borrow| borrow.as_debuggable().map(|debug| debug.set_debugging(true))));
-        self.debugger.borrow_mut().breakpoint_occurred();
     }
 
     pub fn disable_debugging(&self) {
@@ -143,18 +142,6 @@ impl System {
         while self.clock < target {
             self.step()?;
         }
-        Ok(())
-    }
-
-    pub fn run_until_break(&mut self) -> Result<(), Error> {
-        /* let mut signal = match &self.break_signal {
-            Some(signal) => signal.clone(),
-            None => return Ok(()),
-        };
-
-        while !signal.get() {
-            self.step()?;
-        } */ //TODO: figure out what signals are
         Ok(())
     }
 

@@ -8,8 +8,7 @@ use crate::core::{Address, Addressable, Debuggable, TransmutableBox};
 
 pub struct Debugger {
     last_command: Option<String>,
-    repeat: u32,
-    trace_only: bool,
+    repeat: u32
 }
 
 
@@ -17,24 +16,14 @@ impl Debugger {
     pub fn new() -> Self {
         Self {
             last_command: None,
-            repeat: 0,
-            trace_only: false,
+            repeat: 0
         }
-    }
-
-    pub fn breakpoint_occurred(&mut self) {
-        self.trace_only = false;
     }
 
     pub fn run_debugger(&mut self, system: &System, target: TransmutableBox) -> Result<(), Error> {
         let mut target = target.borrow_mut();
         let debug_obj = target.as_debuggable().unwrap();
-        println!("@ {} ns", system.clock);
         debug_obj.print_current_step(system)?;
-
-        if self.trace_only {
-            return Ok(());
-        }
 
         if self.repeat > 0 {
             self.repeat -= 1;
@@ -128,32 +117,6 @@ impl Debugger {
                     //self.port.dump_memory(self.state.ssp as Address, 0x40 as Address);
                 }
             },
-            "i" | "inspect" => {
-                if args.len() < 2 {
-                    println!("Usage: inspect <device_name> [<device specific arguments>]");
-                } else {
-                    let device = system.get_device(args[1])?;
-                    let subargs = if args.len() > 2 { &args[2..] } else { &[""] };
-                    device.borrow_mut().as_inspectable()
-                        .ok_or_else(|| Error::new("That device is not inspectable"))?
-                        .inspect(system, subargs)?;
-                }
-            },
-            "dis" | "disassemble" => {
-                let addr = if args.len() > 1 {
-                    Address::from_str_radix(args[1], 16).map_err(|_| Error::new("Unable to parse address"))?
-                } else {
-                    0
-                };
-
-                let count = if args.len() > 2 {
-                    usize::from_str_radix(args[2], 16).map_err(|_| Error::new("Unable to parse address"))?
-                } else {
-                    0x1000
-                };
-
-                debug_obj.print_disassembly(addr, count);
-            },
             "c" | "continue" => {
                 self.check_repeat_arg(args)?;
                 system.disable_debugging();
@@ -163,10 +126,6 @@ impl Debugger {
                 self.check_repeat_arg(args)?;
                 return Ok(true);
             },
-            "t" | "trace" => {
-                self.trace_only = true;
-                return Ok(true);
-            }
             "setb" | "setw" | "setl" => {
                 if args.len() != 3 {
                     println!("Usage: set[b|w|l] <addr> <data>");

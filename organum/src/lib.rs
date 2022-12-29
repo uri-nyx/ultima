@@ -11,4 +11,3 @@ pub mod interrupts;
 pub mod premade;
 pub mod server;
 pub mod sys;
-pub mod timers;

@@ -143,7 +143,7 @@ pub struct BusPort {
     subdevice: Rc<RefCell<Bus>>,
 }
 
-impl BusPort {
+impl BusPort { //TODO: creo que puedo usar esto para los perifericoes en vez de toda la parafernalia
     pub fn new(offset: Address, address_bits: u8, data_bits: u8, bus: Rc<RefCell<Bus>>) -> Self {
         let mut address_mask = 0;
         for _ in 0..address_bits {

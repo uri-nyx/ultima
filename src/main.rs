@@ -1,53 +1,124 @@
-use organum::premade::bus::BusPort;
-use std::net::{IpAddr, Ipv4Addr};
-
-use crate::components::cpu;
-use organum::core::*;
-use organum::{error::Error, premade::memory, sys};
-use std::vec;
 mod components;
 
-const IP: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
-const PORT: u16 = 65432;
+use std::time;
+use std::fs;
+use std::path::PathBuf;
+use std::net::SocketAddr;
+
+use log::error;
+use winit::{event::Event, event_loop::ControlFlow};
+use clap::{arg, command, value_parser, ArgAction, Command};
+
+use organum::error::Error;
+use components::{build_talea, add_tty, TPS_PATH};
 
 fn main() -> Result<(), Error> {
-    let mut system = sys::System::new();
 
-    let ram = memory::MemoryBlock::new(vec![0; 1 << 20]);
-    let data = memory::MemoryBlock::new(vec![0; 1 << 16]);
-    let serial_block = memory::MemoryBlock::new(vec![0; 4]);
+    
+    let matches = command!()
 
-    system.add_addressable_device(0, wrap_transmutable(ram))?;
-    system.add_addressable_device(0x100001, wrap_transmutable(serial_block))?;
+        .arg(
+            arg!(
+                -s --server <ADDR> "Sets a serial terminal and waits to connect to the server specified"
+            )
+            .required(false)
+            .value_parser(value_parser!(String))
+        )
+        .arg(arg!(
+            -d --debug ... "Turn the external debugger on"
+        )
+        .action(ArgAction::SetTrue)
+        .required(false)
+        )
+        .arg(arg!([bin] "Binary image to bootstrap the system (a BIOS of sorts)")
+        .required(true)
+        .value_parser(value_parser!(PathBuf))
+        )  
+        .subcommand(
+            Command::new("tps")
+                .about("inserts a Tps device into the system")
+                .arg(arg!(-l --list "lists the available Tps slots").action(ArgAction::SetTrue))
+                .arg(arg!([path] "inserts the Tps device at the specified slot"))
+                .arg(arg!([slot] "inserts the Tps device at the specified slot"))
+        )
+    .get_matches();
+    
+    let bin = matches.get_one::<PathBuf>("bin").unwrap();
+    let ip = matches.get_one::<String>("server");
+    let debug = matches.get_one::<bool>("debug");
 
-    system.add_addressable_device_data(0, wrap_transmutable(data))?;
+    if let Some(matches) = matches.subcommand_matches("tps") {
 
-    let main_port = BusPort::new(0, 24, 32, system.bus.clone());
-    let data_port = BusPort::new(0, 16, 32, system.bus_data.clone());
+        if *matches.get_one::<bool>("list").unwrap() {
+            for file in fs::read_dir(TPS_PATH).unwrap() {
+                let file = file.unwrap();
+                println!("{}", file.file_name().into_string().unwrap())
+            }
+        }
 
-    let serial = components::tty::Serial::new(0x100001, main_port.clone());
-    let mut com = components::tty::Tty::new(IP, PORT, &serial);
+        let tps = matches.get_one::<PathBuf>("path");
 
-    com.server.run();
+        if let Some(tps) = tps {
+            let slot = matches.get_one::<PathBuf>("slot").expect("No slot specified");
+            fs::copy(tps, slot).expect("Failed to copy Tps device");
+        }
+    }
 
-    system.add_device("communications-device", wrap_transmutable(com))?;
-    let mut cpu = cpu::state::Sirius::new(
-        components::TaleaCpuType::SiriusType,
-        10_000_000,
-        main_port,
-        data_port,
-    );
+    let socket: SocketAddr = ip.unwrap_or(&String::from("127.0.0.1:65432")).parse().unwrap();
 
-    cpu.port_d.write_beu32(0, 0x1000);
+    let mut d = false;
+    if let Some(debug) = debug {
+        println!("Debugging enabled");
+        d = true;
+    }
 
-    cpu.state.psr.set_priority(1);
+    let mut talea = build_talea(bin, socket.ip(), socket.port(), d)?;
+    talea.server_run(); //TODO: The server starts as soon as it's created. Look for a workaround
+    add_tty(&mut talea.system, talea.tty).expect("Failed to add tty");
 
-    cpu.add_breakpoint(8);
-    system.add_interruptable_device("cpu", wrap_transmutable(cpu))?;
-    system.enable_debugging();
+    talea.event_loop.run(move |event, _, control_flow| {
 
-    // Run forever
-    system.run_for(u64::MAX)?;
+        let now = time::Instant::now();
+        if let Event::RedrawRequested(_) = event {
 
-    Ok(())
+            if let Err(err) = talea.video.screen.render() {
+                error!("pixels.render() failed: {err}");
+                *control_flow = ControlFlow::Exit;
+                return;
+            }
+        }
+        
+        // Handle input events
+        if talea.input.update(&event) {
+            // Close events
+            if talea.input.quit() {
+                *control_flow = ControlFlow::Exit;
+                return;
+            }
+
+            // Resize the window
+            if let Some(size) = talea.input.window_resized() {
+                if let Err(err) = talea.video.screen.framebuffer.resize_surface(size.width, size.height) {
+                    error!("pixels.resize_surface() failed: {err}");
+                    *control_flow = ControlFlow::Exit;
+                    return;
+                }
+            }
+            // Update internal state and request a redraw
+
+            talea.window.request_redraw();
+        }
+
+        talea.video.update(&event, &talea.system, &talea.window);
+        let elapsed = now.elapsed().as_millis();
+        println!("Frame took: {}ms to render", elapsed);
+
+        let now = time::Instant::now();
+        talea.system.run_for(10_000_000);
+        let elapsed = now.elapsed().as_millis();
+        println!("Cpu took: {}ms to run 10k cycles", elapsed);
+    });
 }
+
+
+
