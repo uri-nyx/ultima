@@ -14,6 +14,7 @@ use components::{build_talea, add_tty, TPS_PATH};
 
 fn main() -> Result<(), Error> {
 
+    let frequency = 10_000_000; //TODO: add to clap
     
     let matches = command!()
 
@@ -66,19 +67,21 @@ fn main() -> Result<(), Error> {
 
     let socket: SocketAddr = ip.unwrap_or(&String::from("127.0.0.1:65432")).parse().unwrap();
 
-    let mut d = false;
-    if let Some(debug) = debug {
-        println!("Debugging enabled");
-        d = true;
-    }
-
-    let mut talea = build_talea(bin, socket.ip(), socket.port(), d)?;
+    let mut talea = build_talea(bin, socket.ip(), socket.port(), *debug.unwrap())?;
     talea.server_run(); //TODO: The server starts as soon as it's created. Look for a workaround
     add_tty(&mut talea.system, talea.tty).expect("Failed to add tty");
 
-    talea.event_loop.run(move |event, _, control_flow| {
+    let mut d = false;
+    if let Some(&true) = debug {
+        println!("Debugger enabled.");
+        talea.system.enable_debugging();
+        d = true;
+    }
 
+
+    talea.event_loop.run(move |event, _, control_flow| {
         let now = time::Instant::now();
+        
         if let Event::RedrawRequested(_) = event {
 
             if let Err(err) = talea.video.screen.render() {
@@ -110,13 +113,20 @@ fn main() -> Result<(), Error> {
         }
 
         talea.video.update(&event, &talea.system, &talea.window);
-        let elapsed = now.elapsed().as_millis();
-        println!("Frame took: {}ms to render", elapsed);
 
+        if d {
+            let elapsed = now.elapsed().as_millis();
+            println!("Frame took: {}ms to render", elapsed);
+        }
+        
         let now = time::Instant::now();
-        talea.system.run_for(10_000_000);
-        let elapsed = now.elapsed().as_millis();
-        println!("Cpu took: {}ms to run 10k cycles", elapsed);
+        let ns = 16_000_005; // 16ms
+        talea.system.run_for(ns);
+
+        if d {
+            let elapsed = now.elapsed().as_millis();
+            println!("Cpu took: {}ms to run {} ns", elapsed, ns);
+        }
     });
 }
 

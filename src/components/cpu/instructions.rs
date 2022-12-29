@@ -212,13 +212,13 @@ impl From<u32> for InstructionType {
         let opcode = get_opcode(value);
 
         match group | opcode {
-            LUI | AUIPC => InstructionType::U,
+            LUI | AUIPC => {println!("U instruction"); InstructionType::U},
             JAL => InstructionType::J,
             _ => match group {
                 BRANCH => InstructionType::B,
                 JALR | LOAD | ALUI => InstructionType::I,
                 ALUR => InstructionType::R,
-                STORE => InstructionType::B,
+                STORE => InstructionType::S,
                 MEM => InstructionType::M,
                 SYS => InstructionType::T,
                 _ => InstructionType::Undefined,
@@ -234,10 +234,10 @@ impl TryFrom<u32> for U {
         let opcode = get_opcode(value);
         let rd = Reg::from(get_rd(value) as usize);
         let imm = get_imm20(value) << 4;
-
+//TODO: opcodes to constants
         match opcode {
-            0x0 => Ok(U::Lui(rd, imm)),
-            0x1 => Ok(U::Auipc(rd, imm)),
+            0x1 => Ok(U::Lui(rd, imm)),
+            0x2 => Ok(U::Auipc(rd, imm)),
             _ => Err(Undefined(value)),
         }
     }
@@ -330,7 +330,7 @@ impl TryFrom<u32> for S {
         let opcode = get_opcode(value);
         let rd = Reg::from(get_rd(value) as usize);
         let rs1 = Reg::from(get_rs1(value) as usize);
-        let imm = sign_extend(value & IMM15_MASK, 15);
+        let imm = sign_extend(get_imm15(value), 15);
 
         match opcode {
             0x0 => Ok(S::Sb(rd, rs1, imm)),

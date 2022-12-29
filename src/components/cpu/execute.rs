@@ -70,7 +70,7 @@ impl Sirius {
                             println!("{:?} @ {:x}", self.decoder.instruction, self.state.pc);
                             panic!("Illegal Instruction",)
                         }
-                        Ok(5)
+                        Ok(1)
                     }
                     Err(err) => Err(err),
                 }
@@ -84,7 +84,7 @@ impl Sirius {
         self.state.ssp = self.port_d.read_beu32((ivt * 256) as Address + 0)?; // reset vector
         self.state.pc = self.port_d.read_beu32((ivt * 256) as Address + 4)?;
         self.state.status = Status::Running;
-        Ok(15)
+        Ok(1)
     }
 
     pub fn cycle_one(&mut self, system: &System) -> Result<ClockElapsed, Error> {
@@ -325,7 +325,7 @@ impl Sirius {
                     I::Jalr(rd, rs1, imm) => {
                         *self.get_reg_mut(rd) = self.get_pc();
                         let jump = self.get_reg(rs1).wrapping_add(imm as u32);
-                        self.set_pc(self.get_pc().wrapping_sub(4).wrapping_add(jump))?;;
+                        self.set_pc(self.get_pc().wrapping_sub(4).wrapping_add(jump))?;
                     },
 
                     I::Lb(rd, rs1, imm) => {
@@ -798,14 +798,14 @@ impl Addressable for Sirius {
 
     fn read(&mut self, addr: Address, data: &mut [u8]) -> Result<(), Error> {
         let (real, _, _) = self.translate(addr)?;
-        self.read(real, data)
+        self.port.read(real, data)
     }
     
     fn write(&mut self, addr: Address, data: &[u8]) -> Result<(), Error> {
         let (real, w, _) = self.translate(addr)?;
 
         if w {
-            self.write(real, data)
+            self.port.write(real, data)
         } else {
             Err(Error::processor(Exceptions::AccessViolation as u32))
         }

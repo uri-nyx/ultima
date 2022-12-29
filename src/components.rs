@@ -18,7 +18,7 @@ use organum::{
     sys::System,
     error::Error,
     core::{wrap_transmutable, Address, Addressable, Debuggable},
-    premade::{memory::MemoryBlock, serial::{self, Serial}, bus::BusPort}, 
+    premade::{memory::MemoryBlock, serial::Serial, bus::BusPort}, 
 
 };
 use winit_input_helper::WinitInputHelper;
@@ -165,7 +165,9 @@ fn build_cpu(system: &mut System, frequency: u32, port: BusPort, port_d: BusPort
         port,
         port_d,
     );
-    cpu.set_debugging(debug);
+    if debug {
+        cpu.add_breakpoint(0);
+    }
     system.add_interruptable_device("Sirius-cpu", wrap_transmutable(cpu))?;
     Ok(())
 }

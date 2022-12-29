@@ -21,6 +21,7 @@ pub struct System {
     pub bus: Rc<RefCell<Bus>>,
     pub bus_data: Rc<RefCell<Bus>>,
     pub interrupt_controller: RefCell<InterruptController>,
+    pub cycles: u128
 }
 
 impl System {
@@ -36,6 +37,7 @@ impl System {
             bus: Rc::new(RefCell::new(Bus::new())),
             bus_data: Rc::new(RefCell::new(Bus::new())),
             interrupt_controller: RefCell::new(InterruptController::new()),
+            cycles: 0,
 
         }
     }
