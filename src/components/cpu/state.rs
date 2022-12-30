@@ -202,17 +202,23 @@ pub struct Sirius {
 
 impl State {
     pub fn new() -> Self {
+
+        let psr = StatusReg::new()
+        .with_supervisor(true)
+        .with_interrupt_enabled(false)
+        .with_mmu_enabled(false)
+        .with_priority(7)
+        .with_ivt(62)
+        .with_pdt(255);
+
+        println!("{:?}", psr.into_bytes());
         Self {
             status: Status::Init,
             current_ipl: InterruptPriority::NoInterrupt,
             pending_ipl: InterruptPriority::NoInterrupt,
 
             pc: 0,
-            psr: StatusReg::new()
-                .with_supervisor(true)
-                .with_interrupt_enabled(false)
-                .with_priority(7)
-                .with_ivt(7),
+            psr,
             reg: [0; RGCOUNT],
             ssp: 0,
             usp: 0,

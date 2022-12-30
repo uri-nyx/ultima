@@ -8,6 +8,8 @@ use organum::core::{TransmutableBox, Transmutable, Steppable, Addressable, Addre
 use organum::sys::System;
 use organum::error::Error;
 
+pub const INTERRUPT_LOADED: u8 = 0xd;
+
 pub struct Tps {
     filename: String,
     descriptor: File,
@@ -141,7 +143,7 @@ impl Controller {
     }
 
     pub fn execute(&mut self, system: &System, command: u8, (data, point) : (u8, u16)) -> Result<(), Error> {
-        let b = command & 0x80 != 0;
+        let b = command & 0x80 == 0;
         self.drive.current = if b { 0 } else { 1 };
         let command = Command::from(command);
 
@@ -158,7 +160,7 @@ impl Controller {
                 self.drive.tps[self.drive.current].load_sector(data, &mut self.outcoming)
                     .or_else(|e| {Err(Error::new(&format!("{}", e)))})?;
                 system.get_bus().write(point as Address * 512, &self.outcoming.data)?;
-                system.get_interrupt_controller().set(true, 5, 0 /* fire interrupt for fooshing to load */)?;
+                system.get_interrupt_controller().set(true, 5, INTERRUPT_LOADED)?;
                 Ok(())
             },
             Command::IsBootable => {

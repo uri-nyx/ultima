@@ -618,7 +618,7 @@ impl Sirius {
                     M::Restore(start, end, rs1) => {
                         let addr = self.get_reg(rs1) as Address;
 
-                        for (i, reg) in (usize::from(start)..usize::from(end)).enumerate() {
+                        for (i, reg) in (usize::from(start)..usize::from(end) + 1).enumerate() {
                             *self.get_reg_mut(Register::from(reg)) = self.read_beu32(addr + (i*4) as Address)?;
                         }
                     },

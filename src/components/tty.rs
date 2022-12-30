@@ -6,6 +6,7 @@ use organum::server::Server;
 use organum::sys::System;
 use organum::premade::serial::{Serial, Flag};
 
+pub const INTERRUPT_TRANSMIT: u8 = 0x0a;
 
 pub struct Tty {
     pub server: Server,
@@ -55,7 +56,7 @@ impl Tty {
 
         if self.serial.transmitting {
             self.serial.transmit()?;
-            system.get_interrupt_controller().set(true, 4, 12)?;
+            system.get_interrupt_controller().set(true, 4, INTERRUPT_TRANSMIT)?;
         }
 
         Ok(())

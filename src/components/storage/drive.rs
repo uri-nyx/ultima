@@ -8,6 +8,7 @@ use organum::core::{TransmutableBox, Transmutable, Steppable, Addressable, Addre
 use organum::sys::System;
 use organum::error::Error;
 
+pub const INTERRUPT_LOADED: u8 = 0xe;
 
 pub enum Command {
     Nop,
@@ -160,7 +161,7 @@ impl Controller {
                 self.drive.disk[self.drive.current].load_sector(sector, &mut self.outcoming)
                     .or_else(|e| {Err(Error::new(&format!("{}", e)))})?;
                 system.get_bus().write(point as Address * 512, &self.outcoming.data)?;
-                system.get_interrupt_controller().set(true, 5, 0 /* fire interrupt for fooshing to load */)?;
+                system.get_interrupt_controller().set(true, 5, INTERRUPT_LOADED)?;
                 Ok(())
             },
         }

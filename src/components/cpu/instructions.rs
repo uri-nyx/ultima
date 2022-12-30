@@ -233,8 +233,8 @@ impl TryFrom<u32> for U {
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         let opcode = get_opcode(value);
         let rd = Reg::from(get_rd(value) as usize);
-        let imm = get_imm20(value) << 4;
-//TODO: opcodes to constants
+        let imm = get_imm20(value) << 12;
+//TODO: opcodes to constants, why only 4 bits instead of 12
         match opcode {
             0x1 => Ok(U::Lui(rd, imm)),
             0x2 => Ok(U::Auipc(rd, imm)),

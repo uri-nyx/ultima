@@ -38,12 +38,9 @@ use organum::{core::{Addressable, Address}, error::Error};
 
 pub const ENTRY_SIZE: usize = 2;
 
-pub const TLB_ENTRIES: usize = 16;
-
 pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_TABLE_ENTRIES: usize = 1024;
 pub const PAGE_TABLE_SIZE: usize = PAGE_TABLE_ENTRIES * ENTRY_SIZE;
-
 pub const PAGE_DIRECTORY_ENTRIES: usize = (MEMSIZE/PAGE_SIZE) / PAGE_TABLE_ENTRIES;
 
 pub const PT_SHIFT: u32 = PAGE_TABLE_ENTRIES.count_ones();

@@ -18,12 +18,14 @@ pub struct Serial {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Register {
     TX = 0x00,
+    _TXL,
     RX = 0x02,
+    _RXL,
     STATUS = 0x04,
     CTRL = 0x05,
 }
 
-pub const REGISTER_COUNT: usize = 4;
+pub const REGISTER_COUNT: usize = 6;
 
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
@@ -35,7 +37,7 @@ pub enum Flag {
 
 impl Serial {
     pub fn new(base: Address, frequency: u64) -> Self {
-        let dev = MemoryBlock::new(vec![0u8; 6]);
+        let dev = MemoryBlock::new(vec![0u8;  REGISTER_COUNT]);
         Self { 
             mem: Block {
                 base,

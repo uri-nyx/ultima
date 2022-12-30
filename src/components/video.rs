@@ -27,6 +27,9 @@ pub const RCHARS: (usize, usize) = (160, 50);
 pub const KBD_MODE_CHAR: u8 = 0x10;
 pub const KBD_MODE_KCODE: u8 = 0x20;
 
+pub const INTERRUPT_KBD_CHAR: u8 = 0xb;
+pub const INTERRUPT_KBD_KCODE: u8 = 0xc;
+
 pub const MCOLOR: u8 = 0xf0; 
 pub const DEFAULT_PALETTE: [u8; 16] = [
     0x00, 0x03, 0x1c, 0x0f, 0xe0, 0xee, 0xcc, 0xb6, 
@@ -145,10 +148,10 @@ impl Video {
 
         self.write(Register::CHARACTER as Address, &data)?;
         if self.kbd.mode & KBD_MODE_CHAR != 0 {
-            system.get_interrupt_controller().set(true, 4, 0/*fire interrupt for char*/)?;
+            system.get_interrupt_controller().set(true, 4, INTERRUPT_KBD_CHAR)?;
         }
         if self.kbd.mode & KBD_MODE_KCODE != 0 {
-            system.get_interrupt_controller().set(true, 4, 0+1/*fire interrupt for code*/)?;
+            system.get_interrupt_controller().set(true, 4, INTERRUPT_KBD_KCODE)?;
         }
 
         // Clear Input Registers

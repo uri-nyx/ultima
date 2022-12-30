@@ -1,46 +1,36 @@
 // this module contains the hardware configuration for the Taleä system
-use std::{
-    net::IpAddr, 
-    path::Path,
-    fs,
-    io,
-};
-use regex::Regex;
 use pixels::{Pixels, SurfaceTexture};
+use regex::Regex;
+use std::{fs, io, net::IpAddr, path::Path};
 use winit::{
-
     dpi::LogicalSize,
-    window::{WindowBuilder, Window},
     event_loop::EventLoop,
+    window::{Window, WindowBuilder},
 };
 
 use organum::{
-    sys::System,
-    error::Error,
     core::{wrap_transmutable, Address, Addressable, Debuggable},
-    premade::{memory::MemoryBlock, serial::Serial, bus::BusPort}, 
-
+    error::Error,
+    premade::{bus::BusPort, memory::MemoryBlock, serial::Serial, serial},
+    sys::System,
 };
 use winit_input_helper::WinitInputHelper;
 
 use crate::components::{
-    tty::Tty,
     cpu::state::Sirius,
     storage::{drive, tps},
-    video::{W_WIDTH, W_HEIGHT, Video, font::Font},
+    tty::Tty,
+    video::{font::Font, Video, W_HEIGHT, W_WIDTH},
 };
-
-
 
 pub type Word = u32;
 pub type Uptr = u32;
 
 const BIT: usize = 1;
 
-pub const DATA_BUS_SIZE: usize = 32*BIT;
-pub const ADDR_BUS_MAIN_SIZE: usize = 24*BIT;
-pub const ADDR_BUS_DATA_SIZE: usize = 16*BIT;
-
+pub const DATA_BUS_SIZE: usize = 32 * BIT;
+pub const ADDR_BUS_MAIN_SIZE: usize = 24 * BIT;
+pub const ADDR_BUS_DATA_SIZE: usize = 16 * BIT;
 
 pub const MEMSIZE: usize = 1 << ADDR_BUS_MAIN_SIZE;
 pub const DATSIZE: usize = 1 << ADDR_BUS_DATA_SIZE;
@@ -49,27 +39,28 @@ pub const IVT_SIZE: usize = 4 * 256;
 
 pub const CPU_FREQUENCY: u32 = 10_000_000;
 pub const TTY_FREQUENCY: u64 = 3_000_000;
-pub const DRIVE_BASE: Address = 0x0;
-pub const TPS_BASE: Address = 0xa;
-pub const TTY_BASE: Address = 0x12;
-pub const VIDEO_BASE: Address = 0x1c;
-pub const END_IO: Address = 0x30 as Address;
+
+pub const TTY_BASE: Address     = 0;
+pub const VIDEO_BASE: Address   = TTY_BASE   + serial::REGISTER_COUNT as Address;
+pub const TPS_BASE: Address     = VIDEO_BASE + video::REGISTER_COUNT as Address;
+pub const DRIVE_BASE: Address   = TPS_BASE   + tps::REGISTER_COUNT as Address;
+pub const END_IO: Address       = DRIVE_BASE + drive::REGISTER_COUNT as Address;
+
 pub const DATA_MEMORY_REST: usize = DATSIZE - END_IO as usize;
+
 pub const TITLE: &'static str = "Taleä Computing System";
 pub const FONT_PATH: &'static str = "assets/fonts";
 pub const TPS_PATH: &'static str = "dev/tps/tps";
 pub const DISK_PATH: &'static str = "dev/drive/disk";
 
-
 pub enum TaleaCpuType {
-    SiriusType
+    SiriusType,
 }
 
 pub mod cpu;
-pub mod video;
-pub mod tty;
 pub mod storage;
-
+pub mod tty;
+pub mod video;
 
 pub struct Talea {
     pub system: System,
@@ -88,13 +79,23 @@ impl Talea {
 
 pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Result<Talea, Error> {
     let mut system = System::new();
-    let main_port = BusPort::new(0, ADDR_BUS_MAIN_SIZE as u8, DATA_BUS_SIZE as u8, system.bus.clone());
-    let data_port = BusPort::new(0, ADDR_BUS_DATA_SIZE as u8, DATA_BUS_SIZE as u8, system.bus_data.clone());
-    
+    let main_port = BusPort::new(
+        0,
+        ADDR_BUS_MAIN_SIZE as u8,
+        DATA_BUS_SIZE as u8,
+        system.bus.clone(),
+    );
+    let data_port = BusPort::new(
+        0,
+        ADDR_BUS_DATA_SIZE as u8,
+        DATA_BUS_SIZE as u8,
+        system.bus_data.clone(),
+    );
+
     let mut rom = MemoryBlock::load(rom_file.to_str().unwrap())?;
     let ram = MemoryBlock::new(vec![0; MEMSIZE - rom.len()]);
     let data = MemoryBlock::new(vec![0; DATA_MEMORY_REST]);
-    
+
     rom.read_only();
     let rom_len = rom.len() as Address;
     system.add_addressable_device(0, wrap_transmutable(rom))?;
@@ -106,7 +107,7 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
     let event_loop = EventLoop::new();
     let input = WinitInputHelper::new();
     let window = {
-        let size = LogicalSize::new(W_WIDTH as f64 , W_HEIGHT as f64);
+        let size = LogicalSize::new(W_WIDTH as f64, W_HEIGHT as f64);
         WindowBuilder::new()
             .with_title(TITLE)
             .with_inner_size(size)
@@ -117,26 +118,41 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
     let pixels = {
         let window_size = window.inner_size();
         let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, &window);
-        Pixels::new(W_WIDTH as u32, W_HEIGHT as u32, surface_texture).or_else(|e| {Err(organum::error::Error::new(&format!("{}", e)))})?
+        Pixels::new(W_WIDTH as u32, W_HEIGHT as u32, surface_texture)
+            .or_else(|e| Err(organum::error::Error::new(&format!("{}", e))))?
     };
     system.add_addressable_device_data(END_IO, wrap_transmutable(data))?;
-    let video = Video::new(&mut system, VIDEO_BASE, W_WIDTH, W_HEIGHT, pixels, collect_fonts(&Path::new(FONT_PATH)).unwrap())?;
+    let video = Video::new(
+        &mut system,
+        VIDEO_BASE,
+        W_WIDTH,
+        W_HEIGHT,
+        pixels,
+        collect_fonts(&Path::new(FONT_PATH)).unwrap(),
+    )?;
 
-    Ok(
-        Talea {
-            system,
-            tty,
-            video,
-            window,
-            event_loop,
-            input,
-        }
-    )
+    println!("Video len: {}", video.len());
+
+    Ok(Talea {
+        system,
+        tty,
+        video,
+        window,
+        event_loop,
+        input,
+    })
 }
 
-fn build_tty(system: &mut System, addr: Address, frequency: u64, ip: IpAddr, port: u16) -> Result<Tty, Error> {
+fn build_tty(
+    system: &mut System,
+    addr: Address,
+    frequency: u64,
+    ip: IpAddr,
+    port: u16,
+) -> Result<Tty, Error> {
     let serial = Serial::new(addr, frequency);
     system.add_addressable_device_data(addr, wrap_transmutable(serial.clone()))?;
+    println!("Created Tty:  {}", serial.len());
     let tty = Tty::new(ip, port, &serial);
     Ok(tty)
 }
@@ -151,20 +167,33 @@ fn build_storage(system: &mut System, drive_addr: Address, tps_addr: Address) ->
     let tps_ports = MemoryBlock::new(vec![0; tps::REGISTER_COUNT]);
     let drive = drive::Drive::new(DISK_PATH);
     let tps = tps::Drive::new(TPS_PATH);
-    let drive_controller = drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 1_000_000);
+    let drive_controller =
+        drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 1_000_000);
     let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 100_000);
-    system.add_peripheral_data("Drive-Controller", drive_addr, wrap_transmutable(drive_controller))?;
-    system.add_peripheral_data("Tps-Controller", tps_addr, wrap_transmutable(tps_controller))?;
+
+    println!("Created storage: disk {}, tps {}", drive_ports.len(), tps_ports.len());
+
+    system.add_peripheral_data(
+        "Disk-Controller",
+        drive_addr,
+        wrap_transmutable(drive_controller),
+    )?;
+    system.add_peripheral_data(
+        "Tps-Controller",
+        tps_addr,
+        wrap_transmutable(tps_controller),
+    )?;
     Ok(())
 }
 
-fn build_cpu(system: &mut System, frequency: u32, port: BusPort, port_d: BusPort, debug: bool) -> Result<(), Error> {
-    let mut cpu = Sirius::new(
-        TaleaCpuType::SiriusType,
-        frequency,
-        port,
-        port_d,
-    );
+fn build_cpu(
+    system: &mut System,
+    frequency: u32,
+    port: BusPort,
+    port_d: BusPort,
+    debug: bool,
+) -> Result<(), Error> {
+    let mut cpu = Sirius::new(TaleaCpuType::SiriusType, frequency, port, port_d);
     if debug {
         cpu.add_breakpoint(0);
     }
