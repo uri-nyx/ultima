@@ -1,3 +1,4 @@
+; This is the basic assembler implementation for the Taleä Computer System
 #once
 
 SYS    = 0b000
@@ -264,4 +265,42 @@ SYSRET   = SYS @ 0x6
     gsreg   {rd: reg} => GSREG @ rd @ BLANK10 @ BLANK10
     ssreg   {rs1: reg} => SSREG @ rs1 @ BLANK10 @ BLANK10
     sysret  => SYSRET @ BLANK15 @ BLANK10
+}
+
+#ruledef {
+    li {rd: reg}, {const: i32}  => asm {
+        lui rd, ()
+    }
+    la {rd: reg}, {label} => asm {
+
+    }
+    llb {rd: reg}, {label} => asm {
+
+    }
+    llh {rd: reg}, {label} => asm {
+
+    }
+    llw {rd: reg}, {label} => asm {
+
+    }
+    ssw {rd: reg}, {label}, {rt: reg} => asm {
+
+    }
+    ssw {rd: reg}, {label}, {rt: reg} => asm {
+
+    }
+    ssw {rd: reg}, {label}, {rt: reg} => asm {
+
+    }
+    call {label} => asm {
+
+    }
+    tail {label}, {rt: reg} => asm {
+
+    }
+
+    mv {rd: reg}, {rs: reg} => asm {addi rd, rs, 0}
+    j {label} => asm {jal zero, label}
+    jr {rs: reg} => asm {jalr zero, 0(rs)}
+    ret => asm {jalr zero, 0(sp)}
 }

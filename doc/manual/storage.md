@@ -59,5 +59,3 @@ The commands available to address the Disk Drive are the following:
 - (`0x00`) Nop: does nothing.
 - (`0x01`) Store Sector: stores the sector at `point` into `sector` at `data` drive.
 - (`0x02`) Load Sector: loads the sector at `sector` at `data` into `point`.
-
-The command must designe in the high order byte if the drive `0` or `1` is addressed.

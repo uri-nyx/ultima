@@ -278,7 +278,7 @@ By default, entries in the page table must be 2 bytes long, (a halfword) and con
     │Page Directory Table Entry│Physical address of Page Table:12│reserved:4│
     ╰──────────────────────────┴─────────────────────────────────┴──────────╯
 
-The default values for entrues, and sizes, in bytes, are the following:
+The default values for entries, and sizes, in bytes, are the following:
 
 - Entry size: 2
 - Page size: 4096
