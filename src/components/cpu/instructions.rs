@@ -212,7 +212,7 @@ impl From<u32> for InstructionType {
         let opcode = get_opcode(value);
 
         match group | opcode {
-            LUI | AUIPC => {println!("U instruction"); InstructionType::U},
+            LUI | AUIPC => InstructionType::U,
             JAL => InstructionType::J,
             _ => match group {
                 BRANCH => InstructionType::B,

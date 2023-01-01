@@ -88,6 +88,7 @@ impl Screen {
                 Ok(())
             },
             Command::SetMode => {
+                println!("Mode set");
                 set_mode_and_resize(self, Mode::from(dh), &window).or_else(|e| {Err(organum::error::Error::new(&format!("{}", e)))})
             },
             //Command::SetChar => self.set_char(), //TODO: Maybe it is not necessary fi we provide a pointer to the buffer
@@ -97,6 +98,7 @@ impl Screen {
             }
             //Command::SetPixel => self.set_pixel(),
             Command::Blit => {
+                println!("blit");
                 self.blit(system, dh, dm, dl)?;
                 Ok(())
             }
@@ -289,12 +291,12 @@ impl Screen {
             Mode::RText => {
                 let mut data = [0u8; RCHARS.0 * RCHARS.1];
                 system.get_bus().read(addr, &mut data)?;
-                self.mtextbuf.copy_from_slice(&mut data);
+                self.rtextbuf.copy_from_slice(&mut data);
             },
             Mode::Graphic => {
                 let mut data = [0u8; PIXELS];
                 system.get_bus().read(addr, &mut data)?;
-                self.mtextbuf.copy_from_slice(&mut data);
+                self.graphics.copy_from_slice(&mut data);
             }
         };
 

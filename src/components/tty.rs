@@ -56,7 +56,7 @@ impl Tty {
 
         if self.serial.transmitting {
             self.serial.transmit()?;
-            system.get_interrupt_controller().set(true, 4, INTERRUPT_TRANSMIT)?;
+            system.get_interrupt_controller().set(true, 5, INTERRUPT_TRANSMIT)?;
         }
 
         Ok(())

@@ -141,6 +141,8 @@ impl Sirius {
                 self.state.status = Status::Stopped;
                 return Err(err);
             }
+        } else if number == Exceptions::PrivilegeViolation as u8 {
+            panic!();
         } else {
             self.setup_normal_exception(number, is_interrupt)?;
         }
@@ -176,14 +178,15 @@ impl Sirius {
                 .set_priority(self.state.current_ipl as u8);
         }
 
-        self.push_long(Word::from(self.state.pc))?;
-        self.push_long(Word::from_be_bytes(self.state.psr.into_bytes()))?; // TODO: Are we sure they ar big endian?
+        self.push_long(self.get_pc())?;
+        self.push_long(Word::from_ne_bytes(self.state.psr.into_bytes()))?; // TODO: Are we sure they ar big endian?
 
         let offset = (number as u16) << 2;
         let ivt =  self.state.psr.ivt() as u32 * IVT_SIZE as u32;
         let vector = ivt + offset as u32;
         let addr = self.port_d.read_beu32(vector as Address)?;
-        self.set_pc(addr)?;
+        println!("Vector pointing to: {}", addr);
+        self.set_pc(addr)?; //TODO: this address should be real?
 
         Ok(())
     }
@@ -325,7 +328,7 @@ impl Sirius {
                     I::Jalr(rd, rs1, imm) => {
                         *self.get_reg_mut(rd) = self.get_pc();
                         let jump = self.get_reg(rs1).wrapping_add(imm as u32);
-                        self.set_pc(self.get_pc().wrapping_sub(4).wrapping_add(jump))?;
+                        self.set_pc(jump)?;
                     },
 
                     I::Lb(rd, rs1, imm) => {

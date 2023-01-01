@@ -16,7 +16,7 @@ BLANK15 = 0b00000_00000_00000
 LUI     = 0b010_0001
 AUIPC   = 0b010_0010
 JAL     = 0b010_0000
-JALR    = 0b010_0001
+JALR    = 0b100_0001
 
 BEQ     = BRANCH @ 0x0
 BNE     = BRANCH @ 0x1
@@ -138,7 +138,8 @@ SYSRET   = SYS @ 0x6
 #ruledef {
     lui   {rd: reg}, {imm: u20}  => LUI   @ rd @ imm
     auipc {rd: reg}, {imm: u20}  => AUIPC @ rd @ imm
-    jal   {rd: reg}, {imm: s22}  => {
+    jal   {rd: reg}, {label}  => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
@@ -147,42 +148,48 @@ SYSRET   = SYS @ 0x6
     }
     jalr {rd: reg}, {imm: s15}({rs1: reg}) => JALR @ rd @ rs1 @ imm 
 
-    beq  {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    beq  {rs1: reg}, {rs2: reg}, {label} => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
         imm15 = imm >> 2
         BEQ @ rs1 @ rs2 @ imm15`15
     }
-    bne  {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    bne  {rs1: reg}, {rs2: reg}, {label} => {
+        imm = $ - label`17
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
         imm15 = imm >> 2
         BNE @ rs1 @ rs2 @ imm15`15
     }
-    blt  {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    blt  {rs1: reg}, {rs2: reg}, {label} => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
         imm15 = imm >> 2
         BLT @ rs1 @ rs2 @ imm15`15
     }
-    bge  {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    bge  {rs1: reg}, {rs2: reg}, {label} => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
         imm15 = imm >> 2
         BGE @ rs1 @ rs2 @ imm15`15
     }
-    bltu {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    bltu {rs1: reg}, {rs2: reg}, {label} => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
         imm15 = imm >> 2
         BLTU @ rs1 @ rs2 @ imm15`15
     }
-    bgeu {rs1: reg}, {rs2: reg}, {imm: s17} => {
+    bgeu {rs1: reg}, {rs2: reg}, {label} => {
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
@@ -269,38 +276,49 @@ SYSRET   = SYS @ 0x6
 
 #ruledef {
     li {rd: reg}, {const: i32}  => asm {
-        lui rd, ()
+        lui {rd}, (const >> 12)
+        addi {rd}, {rd}, const`12
     }
     la {rd: reg}, {label} => asm {
-
+        auipc    {rd}, ((label-$) >> 12)
+        addi     {rd},{rd},((label-($-4))`12)
     }
     llb {rd: reg}, {label} => asm {
+        auipc {rd},((label-.) >> 12)
+        lb {rd},((label-(.-4))`12)({rd})
 
     }
     llh {rd: reg}, {label} => asm {
-
+        auipc {rd},((label-.) >> 12)
+        lh {rd},((label-(.-4))`12)({rd})
     }
     llw {rd: reg}, {label} => asm {
-
+        auipc {rd},((label-.) >> 12)
+        lw {rd},((label-(.-4))`12)({rd})
+    }
+    ssb{rd: reg}, {label}, {rt: reg} => asm {
+        auipc    {rt},((label-.) >> 12)
+        sb {rd},((label-(.-4))`12)({rt})
+    }
+    ssh {rd: reg}, {label}, {rt: reg} => asm {
+         auipc    {rt},((label-.) >> 12)
+        sh {rd},((label-(.-4))`12)({rt})
     }
     ssw {rd: reg}, {label}, {rt: reg} => asm {
-
-    }
-    ssw {rd: reg}, {label}, {rt: reg} => asm {
-
-    }
-    ssw {rd: reg}, {label}, {rt: reg} => asm {
-
+        auipc    {rt},((label-.) >> 12)
+        sw {rd},((label-(.-4))`12)({rt})
     }
     call {label} => asm {
-
+        auipc    sp,((label-.) >> 12)
+        jalr     sp,((label-(.-4))`12)(sp)
     }
     tail {label}, {rt: reg} => asm {
-
+        auipc    {rt},((label-.) >> 12)
+        jalr     zero,((label-(.-4))`12)({rt})
     }
 
-    mv {rd: reg}, {rs: reg} => asm {addi rd, rs, 0}
+    mv {rd: reg}, {rs: reg} => asm {addi {rd}, {rs}, 0}
     j {label} => asm {jal zero, label}
-    jr {rs: reg} => asm {jalr zero, 0(rs)}
+    jr {rs: reg} => asm {jalr zero, 0({rs})}
     ret => asm {jalr zero, 0(sp)}
 }

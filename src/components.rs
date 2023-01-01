@@ -38,7 +38,7 @@ pub const DATSIZE: usize = 1 << ADDR_BUS_DATA_SIZE;
 pub const IVT_SIZE: usize = 4 * 256;
 
 pub const CPU_FREQUENCY: u32 = 10_000_000;
-pub const TTY_FREQUENCY: u64 = 3_000_000;
+pub const TTY_FREQUENCY: u64 = 1_000_000;
 
 pub const TTY_BASE: Address     = 0;
 pub const VIDEO_BASE: Address   = TTY_BASE   + serial::REGISTER_COUNT as Address;
@@ -131,8 +131,6 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
         collect_fonts(&Path::new(FONT_PATH)).unwrap(),
     )?;
 
-    println!("Video len: {}", video.len());
-
     Ok(Talea {
         system,
         tty,
@@ -152,7 +150,6 @@ fn build_tty(
 ) -> Result<Tty, Error> {
     let serial = Serial::new(addr, frequency);
     system.add_addressable_device_data(addr, wrap_transmutable(serial.clone()))?;
-    println!("Created Tty:  {}", serial.len());
     let tty = Tty::new(ip, port, &serial);
     Ok(tty)
 }
@@ -169,9 +166,7 @@ fn build_storage(system: &mut System, drive_addr: Address, tps_addr: Address) ->
     let tps = tps::Drive::new(TPS_PATH);
     let drive_controller =
         drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 1_000_000);
-    let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 100_000);
-
-    println!("Created storage: disk {}, tps {}", drive_ports.len(), tps_ports.len());
+    let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 1_000_000);
 
     system.add_peripheral_data(
         "Disk-Controller",

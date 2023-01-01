@@ -1,27 +1,34 @@
 ; Bare metal graphic hello world program for the Taleä system
-; This program shows the system cannot keep up setting pixels
-; until filling the screeen before the screen refresh.
-; The Drivers for the video module should be used instead of writing pixels directly.
-; e.g. a framebuffer and the blit method.
+; This program is a more efficient aproach to the previous example
+; It uses the BLIT video module command and an in memory buffer
+#include "lib/master.asm"
+#include "lib/sys.asm"
 
-; Starts in .section text
-    .org 0
+    #addr 0
 start:
-    addi t1 zero 0          ; increment the sgment register to point other regions of the screen
-    addi a0 zero $300       ; command to set the graphics mode
-    shc a0 zero 2           ; send the command to the GPU
-    addi a0 zero 0          ; a0 is our color, starting black
-    addi x5 zero 0          ; x5 is our index in the framebuffer up to 0x3ffff
-colors:
-    andi a0 a0 $ff          ; Ensure x5 holds an 8-bit value
-    ori a0 a0 $500          ; command to emit pixel to the  (anded with pixel data)
-    shc a0 zero 2           ; Send the command to the GPU
-    addi x5 x5 $1           ; Increment x5 to point to the next pixel
-    beq x5 zero overflow    ; If x5 is 0 after incrementing, there was an overflow
-    addi a0 a0 $1           ; Increment a0 to point to the next color
-    jal zero colors         ; Jump back to the start of the loop
-overflow:
-    addi t1 t1 $1           ; Increment the overflow counter to point to the next segment of the screen
-    ssr x5 t1 0             ; Set the segment register to point to the next segment of the screen
-    jal zero colors         ; Jump back to the next color
+    li t1, (640 * 480)      ; load end of buffer in t1
+    addi a0, zero, V_setmode
+    sbd a0, V_COMMAND(zero)
+    addi a0, zero, 2        ; grphic mode
+    sbd a0, V_DATAH(zero)
+    li t3, 100_000_000         ; implement better timers than this one, and make the video more responsive, a queue of comands would be neat
+.wait:
+    addi t4, t4, 1
+    add zero, zero, zero
+    bne t4, t3, .wait
 
+.color:
+    addi a0, a0, 65
+    la t3, buffer
+    fill t3, t1, a0
+.end:
+    la a0, buffer 
+    swd a0, V_COMMAND(zero)
+    addi a0, zero, V_blit
+    sbd a0, V_COMMAND(zero)
+halt:
+    j halt
+
+
+buffer:
+    #res (640 * 480)

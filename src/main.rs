@@ -121,7 +121,7 @@ fn main() -> Result<(), Error> {
         
         let now = time::Instant::now();
         let ns = 16_000_005; // 16ms
-        talea.system.run_for(ns);
+        talea.system.run_for(ns / 10);
 
         if d {
             let elapsed = now.elapsed().as_millis();
