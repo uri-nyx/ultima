@@ -186,6 +186,7 @@ pub struct State {
     pub ssp: Word,
     pub usp: Word,
     pub virtual_pc : Word,
+    pub blackhole: Word
 }
 
 pub struct Sirius {
@@ -222,7 +223,8 @@ impl State {
             reg: [0; RGCOUNT],
             ssp: 0,
             usp: 0,
-            virtual_pc: 0
+            virtual_pc: 0,
+            blackhole: 0
 
         }
     }
@@ -280,10 +282,19 @@ impl Sirius {
             self.decoder.format_instruction_bytes(&mut self.port),
             self.decoder.instruction
         );
-        println!("Stack:");
-        self.port
-            .dump_memory(self.state.reg[Register::Sp as usize] as Address, 0x40);
-        println!("");
+        
+        if self.state.psr.supervisor() {
+            println!("Supervisor Stack:");
+            self.port
+                .dump_memory(self.state.ssp as Address, 0x40);
+            println!("");
+        } else {
+            println!("User Stack:");
+            self.port
+                .dump_memory(self.state.usp as Address, 0x40);
+            println!("");
+        }
+
     }
 
     pub fn dump_state_str(&mut self) -> String {

@@ -157,7 +157,7 @@ SYSRET   = SYS @ 0x6
         BEQ @ rs1 @ rs2 @ imm15`15
     }
     bne  {rs1: reg}, {rs2: reg}, {label} => {
-        imm = $ - label`17
+        imm = label - $
         assert((imm % 4) == 0)
         ; NOTE OFFSETS FOR JUMPS MUST BE 4 BYTE ALIGNED,
         ; OTHERWISE IT WILL RESULT IN AN EXCEPTION
@@ -275,6 +275,10 @@ SYSRET   = SYS @ 0x6
 }
 
 #ruledef {
+    li {rd: reg}, {const: i32} => asm {
+        assert(const < 0x3fff)
+        addi {rd}, zero, const`15
+    }
     li {rd: reg}, {const: i32}  => asm {
         lui {rd}, (const >> 12)
         addi {rd}, {rd}, const`12

@@ -10,7 +10,8 @@ use winit::{event::Event, event_loop::ControlFlow};
 use clap::{arg, command, value_parser, ArgAction, Command};
 
 use organum::error::Error;
-use components::{build_talea, add_tty, TPS_PATH};
+use organum::core::Addressable;
+use components::{build_talea, TPS_PATH, TIMER_BASE};
 
 fn main() -> Result<(), Error> {
 
@@ -68,8 +69,6 @@ fn main() -> Result<(), Error> {
     let socket: SocketAddr = ip.unwrap_or(&String::from("127.0.0.1:65432")).parse().unwrap();
 
     let mut talea = build_talea(bin, socket.ip(), socket.port(), *debug.unwrap())?;
-    talea.server_run(); //TODO: The server starts as soon as it's created. Look for a workaround
-    add_tty(&mut talea.system, talea.tty).expect("Failed to add tty");
 
     let mut d = false;
     if let Some(&true) = debug {
@@ -77,6 +76,7 @@ fn main() -> Result<(), Error> {
         talea.system.enable_debugging();
         d = true;
     }
+
 
 
     talea.event_loop.run(move |event, _, control_flow| {
@@ -120,7 +120,7 @@ fn main() -> Result<(), Error> {
         }
         
         let now = time::Instant::now();
-        let ns = 16_000_005; // 16ms
+        let ns = 16_000_000; // 16ms
         talea.system.run_for(ns / 10);
 
         if d {

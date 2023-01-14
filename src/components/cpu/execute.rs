@@ -93,7 +93,7 @@ impl Sirius {
 
         self.check_pending_interrupts(system)?;
         self.check_breakpoints(system);
-        Ok((1_000_000_000 / self.frequency as u64) * 10 as ClockElapsed)
+        Ok((1_000_000_000 / self.frequency as u64) * 5 as ClockElapsed )
     }
 
     pub fn check_pending_interrupts(&mut self, system: &System) -> Result<(), Error> {
@@ -153,10 +153,11 @@ impl Sirius {
     pub fn setup_fault(&mut self, number: u8) -> Result<(), Error> {
         let ins_word = self.decoder.instruction_word;
 
-        self.state.psr.set_supervisor(true);
         self.push_long(Word::from(self.state.pc))?; // Retrocede antes de la excepcion
-        self.push_long(Word::from_be_bytes(self.state.psr.into_bytes()))?;
+        self.push_long(Word::from_le_bytes(self.state.psr.into_bytes()))?;
         self.push_long(ins_word)?; // Guarda la instrucción en el stack
+
+        self.state.psr.set_supervisor(true);
 
         let offset = (number as u16) << 2;
         let ivt =  self.state.psr.ivt() as u32 * IVT_SIZE as u32;
@@ -169,6 +170,8 @@ impl Sirius {
 
     pub fn setup_normal_exception(&mut self, number: u8, is_interrupt: bool) -> Result<(), Error> {
         //self.state.request.i_n_bit = true; // no entiendo esto
+        self.push_long(self.get_pc())?;
+        self.push_long(Word::from_le_bytes(self.state.psr.into_bytes()))?;
 
         self.state.psr.set_supervisor(true);
 
@@ -178,14 +181,11 @@ impl Sirius {
                 .set_priority(self.state.current_ipl as u8);
         }
 
-        self.push_long(self.get_pc())?;
-        self.push_long(Word::from_ne_bytes(self.state.psr.into_bytes()))?; // TODO: Are we sure they ar big endian?
 
         let offset = (number as u16) << 2;
         let ivt =  self.state.psr.ivt() as u32 * IVT_SIZE as u32;
         let vector = ivt + offset as u32;
         let addr = self.port_d.read_beu32(vector as Address)?;
-        println!("Vector pointing to: {}", addr);
         self.set_pc(addr)?; //TODO: this address should be real?
 
         Ok(())
@@ -196,10 +196,10 @@ impl Sirius {
     }
 
     fn sysret(&mut self) -> Result<(), Error> {
-        let pc = self.pop_long()?;
         let psr = self.pop_long()?;
+        let pc = self.pop_long()?;
 
-        self.state.psr = StatusReg::from_bytes(Word::to_be_bytes(psr));
+        self.state.psr = StatusReg::from_bytes(Word::to_le_bytes(psr));
         self.set_pc(pc)?;
 
         Ok(())
@@ -578,34 +578,36 @@ impl Sirius {
                     },
                 
                     M::Popb(rd, sp) => {
-                        let addr = *self.get_reg_mut(sp);
+                        let addr = self.get_reg(sp);
+                        let new_sp = self.get_reg(sp).wrapping_add(1);
                         *self.get_reg_mut(rd) = self.read_u8(addr as Address)? as u32;
-                        *self.get_reg_mut(sp) += 1;
+                        *self.get_reg_mut(sp) = new_sp;
                     },
                     M::Poph(rd, sp) => {
                         let addr = *self.get_reg_mut(sp);
                         *self.get_reg_mut(rd) = self.read_beu16(addr as Address)? as u32;
-                        *self.get_reg_mut(sp) += 2;
+                        *self.get_reg_mut(sp) = self.get_reg(sp).wrapping_add(2);
                     },
                     M::Pop(rd, sp) => {
                         let addr = *self.get_reg_mut(sp);
                         *self.get_reg_mut(rd) = self.read_beu32(addr as Address)?;
-                        *self.get_reg_mut(sp) += 4;
+                        *self.get_reg_mut(sp) = self.get_reg(sp).wrapping_add(4);
                     },
                     M::Pushb(rd, sp) => {
-                        *self.get_reg_mut(sp) -= 1;
+                        let new_sp = self.get_reg(sp).wrapping_sub(1);
+                        *self.get_reg_mut(sp) = new_sp;
                         let addr = self.get_reg(sp);
                         let value = self.get_reg(rd);
                         self.write_u8(addr as Address, value as u8)?;
                     },
                     M::Pushh(rd, sp) => {
-                        *self.get_reg_mut(sp) -= 2;
+                        *self.get_reg_mut(sp) = self.get_reg(sp).wrapping_sub(2);
                         let addr = self.get_reg(sp);
                         let value = self.get_reg(rd);
                         self.write_beu16(addr as Address, value as u16)?;
                     },
                     M::Push(rd, sp) => {
-                        *self.get_reg_mut(sp) -= 2;
+                        *self.get_reg_mut(sp) = self.get_reg(sp).wrapping_sub(4);
                         let addr = self.get_reg(sp);
                         let value = self.get_reg(rd);
                         self.write_beu32(addr as Address, value)?;
@@ -712,9 +714,9 @@ impl Sirius {
             Register::Zero => 0,
             Register::Sp => {
                 if self.is_supervisor() {
-                    self.state.ssp
+                    return self.state.ssp
                 } else {
-                    self.state.usp
+                    return self.state.usp
                 }
             },
             _ => self.state.reg[reg as usize]
@@ -725,15 +727,10 @@ impl Sirius {
     fn get_reg_mut(&mut self, reg: Register) -> &mut Word {
         match reg {
             Register::Zero => {
-                self.state.reg[0] = 0;
-                &mut self.state.reg[0]
+                &mut self.state.blackhole
             },
             Register::Sp => {
-                if self.is_supervisor() {
-                    &mut self.state.ssp
-                } else {
-                    &mut self.state.usp
-                }
+                self.get_stack_pointer_mut()
             },
             _ => &mut self.state.reg[reg as usize]
         }

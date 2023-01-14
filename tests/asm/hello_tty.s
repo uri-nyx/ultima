@@ -7,12 +7,9 @@ start:
     addi t1, t1, msg.len
 .transmit:
     lbu a0, msg(t2)
-    sbd t1, T_LEN(zero)
+    beq a0, zero, halt
     sbd a0, T_TX(zero)
-    sbd zero, T_TX(zero)
-    subi t1, t1, 1
     addi t2, t2, 1
-    beq t1, zero, halt
     j .transmit
 
 halt:

@@ -44,7 +44,7 @@ impl Server {
                 match from_client.read(&mut buf) {
                     Ok(0) => {
                         drop(sender);
-                        println!("[SERVER] CLIENT closed connection.");
+                        println!("[SERVER] CLIENT closed connection."); // TODO: change println for logs
                         break
                     },
     
@@ -52,13 +52,15 @@ impl Server {
                         match sender.send(buf) {
                             Ok(_) => continue,
                             Err(e) => { 
-                                panic!("Stream Error: {}", e);
+                                println!("Stream Error: {}", e);
+                                break
                             }
                         }
                     },
     
                     Err(e) => { 
-                        panic!("Stream Error: {}", e); 
+                        println!("Stream Error: {}", e);
+                        break
                     }
                 }
             }

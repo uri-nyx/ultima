@@ -2,6 +2,7 @@
  
 use crate::core::{Transmutable, Address, Addressable, wrap_transmutable};
 use crate::premade::{memory::MemoryBlock, bus::Block};
+use crate::sys::System;
 use crate::error::Error;
 
 #[derive(Clone)]
@@ -11,6 +12,7 @@ pub struct Serial {
     pub rx_buffer: Vec<u8>,
     pub transmitting: bool,
     pub receiving: bool,
+    pub busy: bool,
     pub frequency: u64
 }
 
@@ -18,9 +20,7 @@ pub struct Serial {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Register {
     TX = 0x00,
-    _TXL,
     RX = 0x02,
-    _RXL,
     STATUS = 0x04,
     CTRL = 0x05,
 }
@@ -30,7 +30,7 @@ pub const REGISTER_COUNT: usize = 6;
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Flag {
-    ACK  = 1<<0,
+    BUSY  = 1<<0,
     DONE = 1<<1,
 }
 
@@ -48,93 +48,40 @@ impl Serial {
             rx_buffer: Vec::new(),
             transmitting: false,
             receiving: false,
+            busy: false,
             frequency
         }
     }
 
-    pub fn transmit(&mut self) -> Result<(), Error> {
-        // Steppable
-        if self.transmitting && self.status()? & Flag::ACK as u8 != 0 {
-            let byte = self.tx_buffer.pop();
-            match byte {
-                Some(byte) => self.tx(byte, self.tx_buffer.len() as u8)?,
-                None => self.transmitting = false,
-            }
-
-            let stat = &[self.status()? & !(Flag::ACK as u8)];
-
-            self.write(Register::STATUS as Address, stat)?;
-
-            return Ok(())
+    pub fn tx(&mut self) -> Result<u8, Error> {
+            match self.tx_buffer.pop() {
+                Some(byte) => {
+                    Ok(byte)
+                }
+                None => {
+                    Ok(0)
+                }
         }
+    }
 
+    pub fn rx(&mut self) -> Result<bool, Error> {
+        let byte = self.read_u8(Register::RX as Address)?;
+        self.rx_buffer.push(byte);
+        self.write_u8(Register::RX as Address, 0)?;
+
+        Ok(byte == 0)
+    }
+
+    pub fn is_busy(&mut self) -> Result<bool, Error> {
+        Ok(self.read_u8(Register::STATUS as Address)? & Flag::BUSY as u8 != 0)
+    }
+
+    pub fn set_done(&mut self) -> Result<(), Error> {
+        let stat = self.read_u8(Register::STATUS as Address)?;
+        self.write_u8(Register::STATUS as Address, stat | Flag::DONE as u8)?;
         Ok(())
     }
 
-    pub fn receive(&mut self) -> Result<(), Error> {
-        // Steppable
-        let (byte, remaining) = self.rx()?;
-        if remaining != 0 {
-            self.set_status(Flag::DONE as u8)?; //TODO: temporal
-            self.rx_buffer.push(byte);
-        } else {
-            self.set_status(Flag::DONE as u8)?;
-        }
-
-        Ok(())
-    }
-
-    pub fn done(&mut self) -> Result<bool, Error> {
-        let stat = self.status()?;
-        Ok(stat & Flag::DONE as u8 != 0)
-
-    }
-
-    #[inline(always)]
-    fn tx(&mut self, byte: u8, remaining: u8) -> Result<(), Error> {
-        self.write(Register::TX as Address, &[byte, remaining])?;
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn rx(&mut self) -> Result<(u8, u8), Error> {
-        let mut received = [0u8; 2];
-        self.read(Register::RX as Address, &mut received)?;
-
-        Ok((received[0], received[1]))
-    }
-
-    #[inline(always)]
-    pub fn set_status(&mut self, flags: u8) -> Result<(), Error> {
-        let stat = self.status()?;
-        
-        self.write(Register::STATUS as Address, &[stat | flags])?;
-        Ok(())
-    }
-
-    #[inline(always)]
-    pub fn clear_status(&mut self, flags: u8) -> Result<(), Error> {
-        let stat = self.status()?;
-        
-        self.write(Register::STATUS as Address, &[stat & !flags])?;
-        Ok(())
-    }
-
-    #[inline(always)]
-    pub fn status(&mut self) -> Result<u8, Error> {
-        let mut received = [0u8; 1];
-        self.read(Register::STATUS as Address, &mut received)?;
-
-        Ok(received[0])
-    }
-
-    #[inline(always)]
-    pub fn ctrl(&mut self) -> Result<u8, Error> {
-        let mut received = [0u8; 1];
-        self.read(Register::CTRL as Address, &mut received)?;
-
-        Ok(received[0])
-    }
 }
 
 impl Addressable for Serial {
@@ -143,9 +90,26 @@ impl Addressable for Serial {
     }
 
     fn read(&mut self, addr: Address, data: &mut [u8]) -> Result<(), Error> {
-        self.mem.dev.borrow_mut().as_addressable().unwrap()
-        .read(addr, data)?;
+
+        for i in 0..data.len() {
+            let addr = addr + i as Address;
+            match addr {
+                0 => {
+                    let b = self.tx()?;
+                    println!("Incoming: {} : {}", b, b as char);
+                    data[i] = b;
+                }
+                1 => {
+                    let b = self.tx_buffer.len() as u8;
+                    println!("Remaining: {}", b);
+                    data[i] = b;
+                }
+                _ => data[i] = self.mem.dev.borrow_mut().as_addressable().unwrap().read_u8(addr)?
+            }
+        }
+
         Ok(())
+
     }
 
     fn write(&mut self, addr:  Address, data: &[u8]) -> Result<(), Error> {

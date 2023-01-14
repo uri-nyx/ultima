@@ -21,6 +21,7 @@ use crate::components::{
     storage::{drive, tps},
     tty::Tty,
     video::{font::Font, Video, W_HEIGHT, W_WIDTH},
+    timer::Timer
 };
 
 pub type Word = u32;
@@ -38,13 +39,14 @@ pub const DATSIZE: usize = 1 << ADDR_BUS_DATA_SIZE;
 pub const IVT_SIZE: usize = 4 * 256;
 
 pub const CPU_FREQUENCY: u32 = 10_000_000;
-pub const TTY_FREQUENCY: u64 = 1_000_000;
+pub const TTY_FREQUENCY: u64 = 10_000_000;
 
 pub const TTY_BASE: Address     = 0;
 pub const VIDEO_BASE: Address   = TTY_BASE   + serial::REGISTER_COUNT as Address;
 pub const TPS_BASE: Address     = VIDEO_BASE + video::REGISTER_COUNT as Address;
 pub const DRIVE_BASE: Address   = TPS_BASE   + tps::REGISTER_COUNT as Address;
-pub const END_IO: Address       = DRIVE_BASE + drive::REGISTER_COUNT as Address;
+pub const TIMER_BASE: Address   = DRIVE_BASE + drive::REGISTER_COUNT as Address;
+pub const END_IO: Address       = TIMER_BASE + timer::REGISTER_COUNT as Address;
 
 pub const DATA_MEMORY_REST: usize = DATSIZE - END_IO as usize;
 
@@ -61,20 +63,15 @@ pub mod cpu;
 pub mod storage;
 pub mod tty;
 pub mod video;
+pub mod timer;
 
 pub struct Talea {
     pub system: System,
-    pub tty: Tty,
+    //pub tty: Tty,
     pub video: Video,
     pub window: Window,
     pub event_loop: EventLoop<()>,
     pub input: WinitInputHelper,
-}
-
-impl Talea {
-    pub fn server_run(&mut self) {
-        self.tty.server.run()
-    }
 }
 
 pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Result<Talea, Error> {
@@ -103,7 +100,9 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
 
     build_cpu(&mut system, CPU_FREQUENCY, main_port, data_port, debug)?;
     build_storage(&mut system, DRIVE_BASE, TPS_BASE)?;
-    let tty = build_tty(&mut system, TTY_BASE, TTY_FREQUENCY, ip, port)?;
+    build_tty(&mut system, TTY_BASE, TTY_FREQUENCY, ip, port)?;
+    build_timer(&mut system, TIMER_BASE, CPU_FREQUENCY as u64)?;
+
     let event_loop = EventLoop::new();
     let input = WinitInputHelper::new();
     let window = {
@@ -133,7 +132,7 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
 
     Ok(Talea {
         system,
-        tty,
+        //tty,
         video,
         window,
         event_loop,
@@ -147,15 +146,11 @@ fn build_tty(
     frequency: u64,
     ip: IpAddr,
     port: u16,
-) -> Result<Tty, Error> {
+) -> Result<(), Error> {
     let serial = Serial::new(addr, frequency);
-    system.add_addressable_device_data(addr, wrap_transmutable(serial.clone()))?;
-    let tty = Tty::new(ip, port, &serial);
-    Ok(tty)
-}
-
-pub fn add_tty(system: &mut System, tty: Tty) -> Result<(), Error> {
-    system.add_device("Tty-0", wrap_transmutable(tty))?;
+    let mut tty = Tty::new(ip, port, serial);
+    tty.server.run();
+    system.add_peripheral_data("Tty-0", addr, wrap_transmutable(tty))?;
     Ok(())
 }
 
@@ -165,8 +160,8 @@ fn build_storage(system: &mut System, drive_addr: Address, tps_addr: Address) ->
     let drive = drive::Drive::new(DISK_PATH);
     let tps = tps::Drive::new(TPS_PATH);
     let drive_controller =
-        drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 1_000_000);
-    let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 1_000_000);
+        drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 10_000_000);
+    let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 10_000_000);
 
     system.add_peripheral_data(
         "Disk-Controller",
@@ -178,6 +173,12 @@ fn build_storage(system: &mut System, drive_addr: Address, tps_addr: Address) ->
         tps_addr,
         wrap_transmutable(tps_controller),
     )?;
+    Ok(())
+}
+
+fn build_timer(system: &mut System, addr: Address, frequency: u64) -> Result<(), Error> {
+    let timer = Timer::new(addr, frequency);
+    system.add_peripheral_data("Timer-0", addr, wrap_transmutable(timer))?;
     Ok(())
 }
 
