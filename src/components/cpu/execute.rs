@@ -442,6 +442,14 @@ impl Sirius {
                         let value = self.get_reg(rs1) << (imm as u32);
                         *self.get_reg_mut(rd) = value;
                     },
+                    I::Slti(rd, rs1, imm) => {
+                        let value = if (self.get_reg(rs1) as i32) < (imm) {1} else {0};
+                        *self.get_reg_mut(rd) = value;
+                    },
+                    I::Sltiu(rd, rs1, imm) => {
+                        let value = if self.get_reg(rs1) < (imm as u32) {1} else {0};
+                        *self.get_reg_mut(rd) = value;
+                    }
                 }
             },
             Instruction::R(instruction) => {
@@ -633,6 +641,14 @@ impl Sirius {
                         *self.get_reg_mut(rs1) = b;
                         *self.get_reg_mut(rs2) = a;
                     },
+                    M::Slt(rd, rs1, rs2) => {
+                        let value = if (self.get_reg(rs1) as i32) < (self.get_reg(rs2) as i32) {1} else {0};
+                        *self.get_reg_mut(rd) = value;
+                    },
+                    M::Sltu(rd, rs1, rs2) => {
+                        let value = if self.get_reg(rs1) < self.get_reg(rs2) {1} else {0};
+                        *self.get_reg_mut(rd) = value;
+                    }
                 }
             },
             Instruction::T(instruction) => {

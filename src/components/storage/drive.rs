@@ -59,6 +59,7 @@ pub struct  Disk {
 
 impl Disk {
     pub fn new(filename: String) -> Self {
+        println!("PATH: {filename}");
         let descriptor = OpenOptions::new()
                 .create(true)
                 .read(true)

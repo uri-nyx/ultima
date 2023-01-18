@@ -2,7 +2,6 @@
  
 use crate::core::{Transmutable, Address, Addressable, wrap_transmutable};
 use crate::premade::{memory::MemoryBlock, bus::Block};
-use crate::sys::System;
 use crate::error::Error;
 
 #[derive(Clone)]
@@ -96,12 +95,10 @@ impl Addressable for Serial {
             match addr {
                 0 => {
                     let b = self.tx()?;
-                    println!("Incoming: {} : {}", b, b as char);
                     data[i] = b;
                 }
                 1 => {
                     let b = self.tx_buffer.len() as u8;
-                    println!("Remaining: {}", b);
                     data[i] = b;
                 }
                 _ => data[i] = self.mem.dev.borrow_mut().as_addressable().unwrap().read_u8(addr)?

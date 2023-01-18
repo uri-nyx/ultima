@@ -2,6 +2,8 @@
 use crate::core::*;
 use crate::error::Error;
 use std::fs;
+use std::io;
+use std::io::Read;
 
 #[derive(Debug, Clone)]
 pub struct MemoryBlock {
@@ -18,6 +20,13 @@ impl MemoryBlock {
     }
 
     pub fn load(filename: &str) -> Result<MemoryBlock, Error> {
+        if filename == "stdin" {
+            let mut contents: Vec<u8> = vec![];
+            match io::stdin().read_to_end(&mut contents) {
+                Ok(_) => return Ok(MemoryBlock::new(contents)),
+                Err(e) => return Err(Error::new(&format!("Error reading stdin: {e}")))
+            }
+        }
         match fs::read(filename) {
             Ok(contents) => Ok(MemoryBlock::new(contents)),
             Err(e) => Err(Error::new(&format!("Error reading contents of {}: {}", filename, e))),

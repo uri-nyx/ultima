@@ -6,3 +6,5 @@ organum/target
 src/sirius.md
 Cargo.lock
 src/sirius.md
+pl0.bin
+.gitignore

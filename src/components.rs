@@ -1,7 +1,7 @@
 // this module contains the hardware configuration for the Taleä system
 use pixels::{Pixels, SurfaceTexture};
 use regex::Regex;
-use std::{fs, io, net::IpAddr, path::Path};
+use std::{fs, io, net::IpAddr, path::Path, path::PathBuf};
 use winit::{
     dpi::LogicalSize,
     event_loop::EventLoop,
@@ -74,7 +74,7 @@ pub struct Talea {
     pub input: WinitInputHelper,
 }
 
-pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Result<Talea, Error> {
+pub fn build_talea(root_path: &PathBuf, rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Result<Talea, Error> {
     let mut system = System::new();
     let main_port = BusPort::new(
         0,
@@ -93,13 +93,13 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
     let ram = MemoryBlock::new(vec![0; MEMSIZE - rom.len()]);
     let data = MemoryBlock::new(vec![0; DATA_MEMORY_REST]);
 
-    rom.read_only();
+    //rom.read_only(); //TODO: figure out a way around this
     let rom_len = rom.len() as Address;
     system.add_addressable_device(0, wrap_transmutable(rom))?;
     system.add_addressable_device(rom_len, wrap_transmutable(ram))?;
 
     build_cpu(&mut system, CPU_FREQUENCY, main_port, data_port, debug)?;
-    build_storage(&mut system, DRIVE_BASE, TPS_BASE)?;
+    build_storage(root_path.to_owned(), &mut system, DRIVE_BASE, TPS_BASE)?;
     build_tty(&mut system, TTY_BASE, TTY_FREQUENCY, ip, port)?;
     build_timer(&mut system, TIMER_BASE, CPU_FREQUENCY as u64)?;
 
@@ -127,7 +127,7 @@ pub fn build_talea(rom_file: &Path, ip: IpAddr, port: u16, debug: bool) -> Resul
         W_WIDTH,
         W_HEIGHT,
         pixels,
-        collect_fonts(&Path::new(FONT_PATH)).unwrap(),
+        collect_fonts(&root_path.clone().join(FONT_PATH)).unwrap(),
     )?;
 
     Ok(Talea {
@@ -154,11 +154,11 @@ fn build_tty(
     Ok(())
 }
 
-fn build_storage(system: &mut System, drive_addr: Address, tps_addr: Address) -> Result<(), Error> {
+fn build_storage(path: PathBuf, system: &mut System, drive_addr: Address, tps_addr: Address) -> Result<(), Error> {
     let drive_ports = MemoryBlock::new(vec![0; drive::REGISTER_COUNT]);
     let tps_ports = MemoryBlock::new(vec![0; tps::REGISTER_COUNT]);
-    let drive = drive::Drive::new(DISK_PATH);
-    let tps = tps::Drive::new(TPS_PATH);
+    let drive = drive::Drive::new(path.join(DISK_PATH).to_str().unwrap());
+    let tps = tps::Drive::new(path.join(TPS_PATH).to_str().unwrap());
     let drive_controller =
         drive::Controller::new(drive, wrap_transmutable(drive_ports.clone()), 10_000_000);
     let tps_controller = tps::Controller::new(tps, wrap_transmutable(tps_ports.clone()), 10_000_000);

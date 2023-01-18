@@ -10,10 +10,14 @@ use winit::{event::Event, event_loop::ControlFlow};
 use clap::{arg, command, value_parser, ArgAction, Command};
 
 use organum::error::Error;
-use organum::core::Addressable;
-use components::{build_talea, TPS_PATH, TIMER_BASE};
+use components::{build_talea, TPS_PATH};
+use locate_cargo_manifest::locate_manifest;
 
 fn main() -> Result<(), Error> {
+    let ROOT = std::env::current_exe().expect("Could not locate current executable");
+    let ROOT = ROOT.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf();
+    println!("{:?}", ROOT);
+    //let ROOT = ROOT.parent().unwrap().to_path_buf(); //TODO: CHANGE FOR FINAL
 
     let frequency = 10_000_000; //TODO: add to clap
     
@@ -32,8 +36,8 @@ fn main() -> Result<(), Error> {
         .action(ArgAction::SetTrue)
         .required(false)
         )
-        .arg(arg!([bin] "Binary image to bootstrap the system (a BIOS of sorts)")
-        .required(true)
+        .arg(arg!([bin] "Binary image to bootstrap the system (a BIOS of sorts) If it is not specified, will read from stdin")
+        .required(false)
         .value_parser(value_parser!(PathBuf))
         )  
         .subcommand(
@@ -45,7 +49,8 @@ fn main() -> Result<(), Error> {
         )
     .get_matches();
     
-    let bin = matches.get_one::<PathBuf>("bin").unwrap();
+    let default = PathBuf::from("stdin");
+    let bin = matches.get_one::<PathBuf>("bin").unwrap_or(&default);
     let ip = matches.get_one::<String>("server");
     let debug = matches.get_one::<bool>("debug");
 
@@ -67,8 +72,7 @@ fn main() -> Result<(), Error> {
     }
 
     let socket: SocketAddr = ip.unwrap_or(&String::from("127.0.0.1:65432")).parse().unwrap();
-
-    let mut talea = build_talea(bin, socket.ip(), socket.port(), *debug.unwrap())?;
+    let mut talea = build_talea(&ROOT, bin, socket.ip(), socket.port(), *debug.unwrap())?;
 
     let mut d = false;
     if let Some(&true) = debug {

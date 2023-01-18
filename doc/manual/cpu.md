@@ -173,7 +173,7 @@ R instructions are analogous to the I ones: they perform arithmetic operations, 
 
 - *ADD*, `add rd, rs1, rs2`, `0x0`: `rd <- rs1 + rs2`.
 - *SUBtract*, `sub rd, rs1, rs2`, `0x1`: `rd <- rs1 - rs2`.
-- (IV) *Integer DIVision*, `idiv rd, rd2, rs1, rs2`, `0x2`: `rd <- rs1 / rs2; rd2 <- rs1 % rs2`. the quotient is loaded in `rd`, and the remainder in `rd2`.
+- (IV) *Integer DIVision*, `idiv rd, rd2, rs1, rs2`, `0x2`: `rd <- rs1 / rs2; rd2 <- rs1 % rs2`. the quotient is loaded in `rd`, and the remainder in `rd2`. Notice that **both** operands are treated as **signed two's complement** integers.
 - (IV) *MULtiply*, `mul rd, rd2, rs1, rs2`, `0x3`: `rd, rd2 <- rs1 * rs2`. the high byte is loaded in `rd`, and the low one in `rd2`.
 - *bitwise OR*, `or rd, rs1, rs2`, `0x4`: `rd <- rs1 | rs2`.
 - *bitwise AND*, `and rd, rs1, rs2`, `0x5`: `rd <- rs1 & rs2`.

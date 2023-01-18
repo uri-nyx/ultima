@@ -67,6 +67,8 @@ pub enum I {
     ShiRa(Reg, Reg, i32),
     ShiRl(Reg, Reg, i32),
     ShiLl(Reg, Reg, i32),
+    Slti(Reg, Reg, i32),
+    Sltiu(Reg, Reg, i32)
 }
 pub const JALR: u8 = 0x41;
 pub const LOAD: u8 = 0x40;
@@ -125,6 +127,8 @@ pub enum M {
     Save(Reg, Reg, Reg),
     Restore(Reg, Reg, Reg),
     Exch(Reg, Reg),
+    Slt(Reg, Reg, Reg),
+    Sltu(Reg, Reg, Reg),
 }
 pub const MEM: u8 = 0x10;
 
@@ -265,7 +269,7 @@ impl TryFrom<u32> for B {
         let opcode = get_opcode(value);
         let rs1 = Reg::from(get_rd(value) as usize);
         let rs2 = Reg::from(get_rs1(value) as usize);
-        let pcrel_17 = sign_extend(get_imm15(value) << 2, 17);
+        let pcrel_17 = sign_extend(get_imm15(value) << 2, 16);
 
         match opcode {
             0x0 => Ok(B::Beq(rs1, rs2, pcrel_17)),
@@ -316,6 +320,8 @@ impl TryFrom<u32> for I {
             (ALUI, 0x8) => Ok(I::ShiRa(rd, rs1, imm)),
             (ALUI, 0x9) => Ok(I::ShiRl(rd, rs1, imm)),
             (ALUI, 0xa) => Ok(I::ShiLl(rd, rs1, imm)),
+            (ALUI, 0xb) => Ok(I::Slti(rd, rs1, imm)),
+            (ALUI, 0xc) => Ok(I::Sltiu(rd, rs1, imm)),
             (ALUI, _) => Err(Undefined(value)),
 
             (_, _) => Err(Undefined(value)),
@@ -383,7 +389,7 @@ impl TryFrom<u32> for M {
     type Error = Undefined;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let opcode = get_opcode(value);;
+        let opcode = get_opcode(value);
         let rd = Reg::from(get_rd(value) as usize);
         let rs1 = Reg::from(get_rs1(value) as usize);
         let rs2 = Reg::from(get_rs2(value) as usize);
@@ -407,6 +413,8 @@ impl TryFrom<u32> for M {
             0xb => Ok(M::Save(rd, rs1, rs2)),
             0xc => Ok(M::Restore(rd, rs1, rs2)),
             0xd => Ok(M::Exch(rd, rs1)),
+            0xe => Ok(M::Slt(rd, rs1, rs2)),
+            0xf => Ok(M::Sltu(rd, rs1, rs2)),
             _ => Err(Undefined(value)),
         }
     }

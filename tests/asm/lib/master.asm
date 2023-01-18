@@ -49,6 +49,9 @@ SHIRA   = ALUI @ 0x8
 SHIRL   = ALUI @ 0x9
 SHILL   = ALUI @ 0xa
 
+SLTI    = ALUI @ 0xb
+SLTIU   = ALUI @ 0xc
+
 ADD     = ALUR @ 0x0 
 SUB     = ALUR @ 0x1 
 IDIV    = ALUR @ 0x2
@@ -92,6 +95,8 @@ PUSH    = MEM @ 0xa
 SAVE    = MEM @ 0xb
 RESTORE = MEM @ 0xc
 EXCH    = MEM @ 0xd
+SLT     = MEM @ 0xe 
+SLTU   = MEM @ 0xf 
 
 SYSCALL  = SYS @ 0x2
 GSREG    = SYS @ 0x3
@@ -224,6 +229,9 @@ SYSRET   = SYS @ 0x6
     shirl {rd: reg}, {rs1: reg}, {imm: i15} => SHIRL @ rd @ rs1 @ imm
     shill {rd: reg}, {rs1: reg}, {imm: i15} => SHILL @ rd @ rs1 @ imm
 
+    slti  {rd: reg}, {rs1: reg}, {imm: i15} => SLTI @ rd @ rs1 @ imm
+    sltiu {rd: reg}, {rs1: reg}, {imm: u15} => SLTIU @ rd @ rs1 @ imm
+
     add    {rd: reg}, {rs1: reg}, {rs2: reg} => ADD @ rd @ rs1 @ rs2 @ BLANK10
     sub    {rd: reg}, {rs1: reg}, {rs2: reg} => SUB @ rd @ rs1 @ rs2 @ BLANK10
     idiv   {rd: reg}, {rd2: reg}, {rs1: reg}, {rs2: reg} => IDIV @ rd @ rd2 @ rs1 @ rs2 @ BLANK5
@@ -232,6 +240,9 @@ SYSRET   = SYS @ 0x6
     or     {rd: reg}, {rs1: reg}, {rs2: reg} => OR @ rd @ rs1 @ rs2  @ BLANK10
     and    {rd: reg}, {rs1: reg}, {rs2: reg} => AND @ rd @ rs1 @ rs2 @ BLANK10
     xor    {rd: reg}, {rs1: reg}, {rs2: reg} => XOR @ rd @ rs1 @ rs2 @ BLANK10
+
+    slt    {rd: reg}, {rs1: reg}, {rs2: reg} => SLT @ rd @ rs1 @ rs2 @ BLANK10
+    sltu   {rd: reg}, {rs1: reg}, {rs2: reg} => SLTU @ rd @ rs1 @ rs2 @ BLANK10
 
     not    {rd: reg}, {rs1: reg} => NOT @ rd @ rs1 @ BLANK15
     ctz    {rd: reg}, {rs1: reg} => CTZ @ rd @ rs1 @ BLANK15
