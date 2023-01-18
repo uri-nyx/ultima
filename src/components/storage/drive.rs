@@ -58,32 +58,36 @@ pub struct  Disk {
 }
 
 impl Disk {
-    pub fn new(filename: String) -> Self {
+    pub fn new(filename: String) -> Option<Self> {
         println!("PATH: {filename}");
         let descriptor = OpenOptions::new()
                 .create(true)
                 .read(true)
                 .write(true)
-                .open(Path::new(&filename)).unwrap();
+                .open(Path::new(&filename));
+        if descriptor.is_err() { return None }
+        let descriptor = descriptor.unwrap();
         descriptor.set_len(u16::MAX as u64 * 512);
-        Self {
+        Some(Self {
             filename,
             descriptor,
             sectors: u16::MAX
-        }
+        })
     }
 
-    pub fn open(filename: String) -> Self {
+    pub fn open(filename: String) -> Option<Self> {
         let descriptor = OpenOptions::new()
                 .read(true)
                 .write(true)
-                .open(Path::new(&filename)).unwrap();
+                .open(Path::new(&filename));
+        if descriptor.is_err() { return None }
+        let descriptor = descriptor.unwrap();
 
-        Self {
+       Some(Self {
             filename,
             descriptor,
             sectors: u16::MAX
-        }
+        })
     }
 
 
@@ -108,9 +112,20 @@ pub struct Drive {
 
 impl Drive {
     pub fn new(path: &str) -> Self {
+    	let name = "disk";
         let mut disk = Vec::new();
         for i in 0..4 {
-            disk.push(Disk::new(format!("{}_{}", path, i)));
+            let mut d = Disk::open(format!("{path}/{name}_{i}"));
+            if d.is_none() {
+            	d = Disk::new(format!("{path}/{name}_{i}"));
+            	if d.is_none() {
+            		use std::fs;
+            		fs::create_dir_all(path).expect("Unable to create directory for disk devices");
+            		d = Disk::new(format!("{path}/{name}_{i}"));	
+            	}
+            }
+            let d = d.unwrap();
+            disk.push(d);
         }
 
         Self {

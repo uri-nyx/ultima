@@ -53,7 +53,7 @@ pub const DATA_MEMORY_REST: usize = DATSIZE - END_IO as usize;
 pub const TITLE: &'static str = "Taleä Computing System";
 pub const FONT_PATH: &'static str = "assets/fonts";
 pub const TPS_PATH: &'static str = "dev/tps/tps";
-pub const DISK_PATH: &'static str = "dev/drive/disk";
+pub const DISK_PATH: &'static str = "dev/drive";
 
 pub enum TaleaCpuType {
     SiriusType,
