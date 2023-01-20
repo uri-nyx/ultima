@@ -11,12 +11,14 @@ pub struct Keyboard {
     pub mode: u8
 }
 
+#[allow(unused)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Command {
     Nop,
     SetMode
 }
 
+#[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Mode {
@@ -34,6 +36,7 @@ impl Keyboard {
         }
     }
 
+    #[allow(unused)]
     pub fn set_mode(&mut self, mode: Mode) {
         self.mode = mode as u8;
     }

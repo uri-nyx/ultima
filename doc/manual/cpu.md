@@ -65,6 +65,9 @@ The Taleä Computer System provides two different types of memory: *main* memory
     ││Disk    ││ 0x0020││
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
+    ││Timer   ││ 0x0028││
+    │╰────────╯╰───────╯│
+    │╭────────╮╭───────╮│
     ││........││.......││
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
@@ -254,6 +257,12 @@ The different peripherals of the system define also their interrupts, their defa
     │TPS Load Finished │ 0x0d│
     ├──────────────────┼─────┤
     │DISK Load Finished│ 0x0e│
+    ├──────────────────┼─────┤
+    │TIMER Timeout     │ 0x0f│ 
+    ├──────────────────┼─────┤     
+    │TIMER Interval    │ 0x10│
+    ├──────────────────┼─────┤ 
+    │VIDEO Refresh     │ 0x11│
     ╰──────────────────┴─────╯
 
 ## Memory Mapping Unit

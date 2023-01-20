@@ -89,7 +89,7 @@ pub fn build_talea(root_path: &PathBuf, rom_file: &Path, ip: IpAddr, port: u16, 
         system.bus_data.clone(),
     );
 
-    let mut rom = MemoryBlock::load(rom_file.to_str().unwrap())?;
+    let rom = MemoryBlock::load(rom_file.to_str().unwrap())?;
     let ram = MemoryBlock::new(vec![0; MEMSIZE - rom.len()]);
     let data = MemoryBlock::new(vec![0; DATA_MEMORY_REST]);
 

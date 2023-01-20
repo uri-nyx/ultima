@@ -82,19 +82,25 @@
  DATA MEMORY MAP
     ╭───────────────────╮
     │╭────────╮╭───────╮│
-    ││Teletype││ 0x0000││
+    ││Teletype││ 0x0000││ 6 bytes
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
-    ││Keyboard││ 0x0006││
+    ││Keyboard││ 0x0006││ 4 bytes
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
-    ││Video   ││ 0x000a││
+    ││Video   ││ 0x000a││ 16 bytes
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
-    ││TPS     ││ 0x001a││
+    ││TPS     ││ 0x001a││ 6 bytes
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
-    ││Disk    ││ 0x0020││
+    ││Disk    ││ 0x0020││ 8 bytes
+    │╰────────╯╰───────╯│
+    │╭────────╮╭───────╮│
+    ││Timer   ││ 0x0028││ 4 bytes
+    │╰────────╯╰───────╯│
+    │╭────────╮╭───────╮│
+    ││Custom  ││ 0x00ff││ 214 bytes
     │╰────────╯╰───────╯│
     │╭────────╮╭───────╮│
     ││........││.......││
@@ -137,6 +143,12 @@
     │TPS Load Finished │ 0x0d│
     ├──────────────────┼─────┤
     │DISK Load Finished│ 0x0e│
+    ├──────────────────┼─────┤
+    │TIMER Timeout     │ 0x0f│ 
+    ├──────────────────┼─────┤     
+    │TIMER Interval    │ 0x10│
+    ├──────────────────┼─────┤ 
+    │VIDEO Refresh     │ 0x11│
     ╰──────────────────┴─────╯
 
 ## MMU
@@ -279,3 +291,11 @@ The commands available to address the Disk Drive are the following:
 - (`0x00`) Nop: does nothing.
 - (`0x01`) Store Sector: stores the sector at `point` into `sector` at `data` drive.
 - (`0x02`) Load Sector: loads the sector at `sector` at `data` into `point`.
+
+## TIMER
+
+    ╭─────────┬────╮
+    │TIMEOUT  │0x00│
+    ├─────────┼────┤
+    │INTERVAL │0x02│
+    ╰─────────┴────╯

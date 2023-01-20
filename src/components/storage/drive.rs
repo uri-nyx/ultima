@@ -28,6 +28,7 @@ impl From<u8> for Command {
     }
 }
 
+#[allow(unused)]
 #[repr(usize)]
 pub enum Register {
     COMMAND,
@@ -47,10 +48,11 @@ pub enum Register {
 
 pub const REGISTER_COUNT: usize = 8;
 
-struct Sector {
+pub struct Sector {
     data: [u8; 512]
 }
 
+#[allow(unused)]
 pub struct  Disk {
     filename: String,
     descriptor: File,
@@ -67,7 +69,7 @@ impl Disk {
                 .open(Path::new(&filename));
         if descriptor.is_err() { return None }
         let descriptor = descriptor.unwrap();
-        descriptor.set_len(u16::MAX as u64 * 512);
+        descriptor.set_len(u16::MAX as u64 * 512).expect("Could not set file size");
         Some(Self {
             filename,
             descriptor,
@@ -99,7 +101,7 @@ impl Disk {
 
     pub fn load_sector(&mut self, sector: u16, data: &mut Sector) -> Result<(), std::io::Error> {
         self.descriptor.seek(SeekFrom::Start(sector as u64 * data.data.len() as u64))?;
-        self.descriptor.read(&mut data.data);
+        self.descriptor.read(&mut data.data)?;
         Ok(())
     }
 }

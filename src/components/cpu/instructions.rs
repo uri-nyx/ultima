@@ -424,7 +424,7 @@ impl TryFrom<u32> for T {
     type Error = Undefined;
 
     fn try_from(value: u32) -> Result<Self, Self::Error> {
-        let opcode = get_opcode(value);;
+        let opcode = get_opcode(value);
         let rd = Reg::from(get_rd(value) as usize);
         let vector = get_trap(value);
 

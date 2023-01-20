@@ -2,7 +2,6 @@ use organum::core::{Address, Addressable};
 use organum::error::Error;
 
 use crate::components::cpu::instructions::{Instruction, InstructionType, B, I, J, M, R, S, T, U};
-use crate::components::cpu::mmu::Mmu;
 use crate::components::{Uptr, Word};
 
 pub struct Decoder {

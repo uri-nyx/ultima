@@ -2,9 +2,9 @@ use std::io::Write;
 
 use organum::core::{Steppable, Transmutable, ClockElapsed, Addressable, Address};
 use organum::error::Error;
-use organum::server::Server;
+use organum::premade::server::Server;
 use organum::sys::System;
-use organum::premade::serial::{Serial, Flag};
+use organum::premade::serial::Serial;
 
 pub const INTERRUPT_TRANSMIT: u8 = 0x0a;
 

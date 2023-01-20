@@ -11,21 +11,17 @@ use clap::{arg, command, value_parser, ArgAction, Command};
 
 use organum::error::Error;
 use components::{build_talea, TPS_PATH};
-use locate_cargo_manifest::locate_manifest;
 
 fn main() -> Result<(), Error> {
-    let ROOT = std::env::current_exe().expect("Could not locate current executable");
-    let ROOT = ROOT.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf();
-    println!("{:?}", ROOT);
-    //let ROOT = ROOT.parent().unwrap().to_path_buf(); //TODO: CHANGE FOR FINAL
-
-    let frequency = 10_000_000; //TODO: add to clap
+    let root_path = std::env::current_exe().expect("Could not locate current executable");
+    let root_path = root_path.parent().unwrap().parent().unwrap().parent().unwrap().to_path_buf();
+    //let root_path = root_path.parent().unwrap().to_path_buf(); //TODO: CHANGE FOR FINAL
     
     let matches = command!()
 
         .arg(
             arg!(
-                -s --server <ADDR> "Sets a serial terminal and waits to connect to the server specified"
+                -s --server <ADDR> "Sets the serial terminal at the given address (default is localhost:65432)"
             )
             .required(false)
             .value_parser(value_parser!(String))
@@ -72,7 +68,7 @@ fn main() -> Result<(), Error> {
     }
 
     let socket: SocketAddr = ip.unwrap_or(&String::from("127.0.0.1:65432")).parse().unwrap();
-    let mut talea = build_talea(&ROOT, bin, socket.ip(), socket.port(), *debug.unwrap())?;
+    let mut talea = build_talea(&root_path, bin, socket.ip(), socket.port(), *debug.unwrap())?;
 
     let mut d = false;
     if let Some(&true) = debug {
@@ -116,7 +112,7 @@ fn main() -> Result<(), Error> {
             talea.window.request_redraw();
         }
 
-        talea.video.update(&event, &talea.system, &talea.window);
+        talea.video.update(&event, &talea.system, &talea.window).expect("Fatal video update failure");
 
         if d {
             let elapsed = now.elapsed().as_millis();
@@ -124,8 +120,8 @@ fn main() -> Result<(), Error> {
         }
         
         let now = time::Instant::now();
-        let ns = 16_000_000; // 16ms
-        talea.system.run_for(ns / 10);
+        let ns = 16_000_000; 
+        talea.system.run_for(ns / 10).expect("Fatal error");
 
         if d {
             let elapsed = now.elapsed().as_millis();

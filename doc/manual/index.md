@@ -6,10 +6,12 @@ IN THE NAME OF THE PRINCE OF TALANDEL, and by His order, this manual has been pr
 
 1. [Introduction](#introduction)
 2. [The Central Processing Unit](cpu.md)
-3. [The Teletype System](tty.md)
+3. [The Serial Port](tty.md)
 4. [The Video System](video.md)
 5. [The Keyboard](keyboard.md)
 6. [Persistent Storage](storage.md)
+7. [Timer Moule](timer.md)
+8. [Custom Devices](custom.md)
 
 ## Introduction
 

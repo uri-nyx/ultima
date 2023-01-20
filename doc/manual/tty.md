@@ -1,6 +1,6 @@
-# The Teletype System
+# The Serial Port
 
-The *teletype system* is the simplest way to interface with the *Taleä Computer System*. It is composed of a printer and a keyboard that send and receive text data over a serial connection.
+The *serial port* is the simplest way to interface with the *Taleä Computer System*. It receives data over a serial connection.
 
 ## PORTS
 
@@ -16,14 +16,14 @@ Note that the transmit (TX) and receive (RX) ports are labeled here from the CPU
     │CTRL  │ byte     │ 0x05│
     ╰──────┴──────────┴─────╯
 
-## Sending a byte to the TTY
+## Sending a byte to the Serial Port
 
-Sending a byte to the tty is easy, one just needs to write it to the TX port.
+Sending a byte to the port is easy, one just needs to write it to the TX port.
 
-## Receiving data from the TTY
+## Receiving data from the Serial Port
 
-An interrupt will be fired when there is data incoming from the TTY at *priority level* 4. Reading from `RX[0]` will transfer a byte to the system, whereas reading from `RX[1]` will return the number of remaining incoming bytes. Notice that subsequent reads from `RX[0]` will return the bytes of the input in a LIFO fashion, until the buffer is exhausted, when it will read `0x00`.
+An interrupt will be fired when there is data incoming from the serial device at *priority level* 4. Reading from `RX[0]` will transfer a byte to the system, whereas reading from `RX[1]` will return the number of remaining incoming bytes. Notice that subsequent reads from `RX[0]` will return the bytes of the input in a LIFO fashion, until the buffer is exhausted, when it will read `0x00`.
 
-## Controlling the tty
+## Controlling the Serial Port
 
 WORK IN PROGGRESS

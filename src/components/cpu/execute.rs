@@ -109,10 +109,6 @@ impl Sirius {
             let priority_mask = self.state.psr.priority();
 
             if (pending_ipl > priority_mask || pending_ipl == 7) && pending_ipl >= current_ipl {
-                println!(
-                    "{} interrupt: {} @ {} ns",
-                    DEV_NAME, pending_ipl, system.clock
-                );
                 self.state.current_ipl = self.state.pending_ipl;
                 let ack_num = system
                     .get_interrupt_controller()
@@ -130,7 +126,9 @@ impl Sirius {
     }
 
     pub fn exception(&mut self, number: u8, is_interrupt: bool) -> Result<(), Error> {
-        println!("{}: raising exception {}", DEV_NAME, number);
+        if number != 17 { // don't print Screen refresh interrupt, too much clutter
+            println!("{}: raising exception {} with priority {:?}", DEV_NAME, number, self.state.current_ipl);
+        }
 
         // IMPORTANT: La diferencia entre excepción y fault es que la última intenta corregir el problema y VUELVE A EJECUTAR la instrucción que la causó
 
@@ -785,15 +783,6 @@ impl Sirius {
         (bytes[0] as u32) << 24 | (bytes[1] as u32) << 16 | (bytes[2] as u32) << 8 | bytes[3] as u32
     }
 
-}
-
-// I don't think I need to validate the address, it's done at decoding
-fn validate_address(addr: u32) -> Result<u32, Error> {
-    if addr & 0x3 == 0 {
-        Ok(addr)
-    } else {
-        Err(Error::processor(Exceptions::AddressError as u32))
-    }
 }
 
 #[inline(always)]

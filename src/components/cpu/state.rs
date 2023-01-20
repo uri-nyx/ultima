@@ -212,7 +212,6 @@ impl State {
         .with_ivt(62)
         .with_pdt(255);
 
-        println!("{:?}", psr.into_bytes());
         Self {
             status: Status::Init,
             current_ipl: InterruptPriority::NoInterrupt,
@@ -295,10 +294,6 @@ impl Sirius {
             println!("");
         }
 
-    }
-
-    pub fn dump_state_str(&mut self) -> String {
-        return format!("Pc: {:08x}", self.state.pc);
     }
 }
 

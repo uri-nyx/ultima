@@ -57,6 +57,7 @@ pub struct Screen {
     //TODO: add mor buffers to allow hardware scrolling?
 }
 
+#[allow(unused)]
 impl Screen {
    
     pub fn new(width: usize, height: usize, pixels: Pixels, fonts: Vec<Font>) -> Self {
@@ -316,6 +317,7 @@ fn rgb332_rgba(col: u8) -> (u8, u8, u8, u8) {
     (r as u8, g as u8, b as u8, a as u8)
 }
 
+#[allow(unused)]
 #[inline(always)]
 fn rgb888_to_rgb332(r: u8, g: u8, b: u8) -> u8 {
     let r = ((r as u32 * 8) / 256) as u8;

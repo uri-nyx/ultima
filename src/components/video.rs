@@ -29,6 +29,8 @@ pub const KBD_MODE_KCODE: u8 = 0x20;
 
 pub const INTERRUPT_KBD_CHAR: u8 = 0xb;
 pub const INTERRUPT_KBD_KCODE: u8 = 0xc;
+pub const INTERRUPT_SCREEN_REFRESH: u8 = 0x11;
+
 
 pub const MCOLOR: u8 = 0xf0; 
 pub const DEFAULT_PALETTE: [u8; 16] = [
@@ -57,6 +59,7 @@ impl From<u8> for Mode {
     }
 }
 
+#[allow(unused)]
 #[repr(usize)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Register {
@@ -90,6 +93,7 @@ pub enum Register {
     STATUS3
 }
 
+#[allow(unused)]
 #[repr(u8)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum Flag {
@@ -125,6 +129,7 @@ impl Video {
     }
 
     pub fn update(&mut self, event: &Event<()>, system: &System, window: &Window) -> Result<(), Error> {
+        system.get_interrupt_controller().set(true, 6, INTERRUPT_SCREEN_REFRESH)?;
         self.process(event, system, window)?;
         self.expose(system)?;
         Ok(())

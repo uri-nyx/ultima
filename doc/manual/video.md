@@ -67,4 +67,7 @@ A set of basic commands manage primary functions of the video controller, such a
 - (`0x2`) Set Mode (dh: mode): sets the requested mode.
 - (`0x4`) Set Font (dh: font): sets the requested hardware font (if it does not exist, default to 0).
 - (`0x6`) Blit (dh-dm-dl): blits the framebuffer with the contents of the buffer at address dh-dm-dl.
-- 
+
+## Screen Refresh
+
+The screen refreshes 60 times a second (60hz), and issues a *SCREEN_REFRESH* interrupt to the cpu at priority level 6.

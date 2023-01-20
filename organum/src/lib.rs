@@ -9,5 +9,4 @@ pub mod debugger;
 pub mod error;
 pub mod interrupts;
 pub mod premade;
-pub mod server;
 pub mod sys;

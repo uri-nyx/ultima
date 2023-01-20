@@ -10,13 +10,14 @@ use organum::error::Error;
 
 pub const INTERRUPT_LOADED: u8 = 0xd;
 
+#[allow(unused)]
 pub struct Tps {
     filename: String,
     descriptor: File,
     sectors: u8
 }
 
-struct Sector {
+pub struct Sector {
     data: [u8; 512]
 }
 
@@ -65,6 +66,7 @@ impl From<u8> for Command {
     }
 }
 
+#[allow(unused)]
 pub enum Register {
     COMMAND,
     DATA,
@@ -84,7 +86,7 @@ impl Tps {
                 .read(true)
                 .write(true)
                 .open(Path::new(&filename)).unwrap();
-        descriptor.set_len(u8::MAX as u64 * 512);
+        descriptor.set_len(u8::MAX as u64 * 512).expect("Could not set TPS file size");
         Self {
             filename,
             descriptor,
@@ -113,7 +115,7 @@ impl Tps {
 
     pub fn load_sector(&mut self, sector: u8, data: &mut Sector) -> Result<(), std::io::Error> {
         self.descriptor.seek(SeekFrom::Start(sector as u64 * data.data.len() as u64))?;
-        self.descriptor.read(&mut data.data);
+        self.descriptor.read(&mut data.data)?;
         Ok(())
     }
 }
@@ -221,7 +223,7 @@ impl Addressable for Controller {
 impl Steppable for Controller {
     fn step(&mut self, system: &System) -> Result<ClockElapsed, Error> {
         let mut command = [0u8; 4];
-        self.read(Register::COMMAND as Address, &mut command);
+        self.read(Register::COMMAND as Address, &mut command)?;
         let (data, point) = (
             command[1],
             (command[2] as u16) << 8 | command[3] as u16,

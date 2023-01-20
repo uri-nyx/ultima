@@ -31,15 +31,18 @@ use std::collections::HashMap;
     ╰──────┴────╯
 */
 
+
 use crate::components::MEMSIZE;
 use crate::components::cpu::state::Exceptions;
 use modular_bitfield_msb::prelude::*;
 use organum::{core::{Addressable, Address}, error::Error};
 
+#[allow(dead_code)]
 pub const ENTRY_SIZE: usize = 2;
 
 pub const PAGE_SIZE: usize = 4096;
 pub const PAGE_TABLE_ENTRIES: usize = 1024;
+#[allow(dead_code)]
 pub const PAGE_TABLE_SIZE: usize = PAGE_TABLE_ENTRIES * ENTRY_SIZE;
 pub const PAGE_DIRECTORY_ENTRIES: usize = (MEMSIZE/PAGE_SIZE) / PAGE_TABLE_ENTRIES;
 
@@ -49,6 +52,7 @@ pub const PD_SHIFT: u32 = PAGE_DIRECTORY_ENTRIES.count_ones() + PT_SHIFT;
 pub const PD_MASK: u32 = PAGE_DIRECTORY_ENTRIES as u32 - 1;
 pub const OFFSET_MASK: u32 = PAGE_SIZE as u32 - 1;
 
+
 #[modular_bitfield_msb::bitfield]
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PageDirectoryEntry {
@@ -56,6 +60,7 @@ pub struct PageDirectoryEntry {
      pub physical_addr: B12,
      #[skip] __: B4, //TODO: which flags should I include here
 }
+
 
 #[modular_bitfield_msb::bitfield]
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -72,6 +77,7 @@ pub struct Tlb {
      pub tlb: HashMap<u16, (u16, bool, bool)>,
 }
 
+#[allow(unused)]
 impl Tlb{
      //due to the nature of the hash map, the tlb need not be invalidated even in context switches
      // this is not real, but it's handy (//TODO: check cost of insertion between the other)

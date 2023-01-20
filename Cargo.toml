@@ -18,3 +18,4 @@ regex = "1.7.0"
 clap = { version = "4.0.32", features = ["cargo"] }
 locate-cargo-manifest = "0.2.2"
 project-root = "0.2.2"
+serialport = { git="https://github.com/serialport/serialport-rs", branch="main" }
